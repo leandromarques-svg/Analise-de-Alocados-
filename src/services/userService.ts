@@ -7,6 +7,13 @@ const CURRENT_USER_KEY = 'metarh_current_user_v2';
 // Initial default accounts
 const DEFAULT_USERS: User[] = [
   {
+    id: 'admin_leandro',
+    username: 'Leandro',
+    password: '@Pi#101412',
+    role: 'Administrador',
+    createdAt: new Date().toISOString(),
+  },
+  {
     id: '1',
     username: 'admin',
     password: '123',
@@ -32,19 +39,37 @@ const DEFAULT_USERS: User[] = [
 
 // Helper to get local users synchronously without triggering remote fetches
 const getLocalUsers = (): User[] => {
+  let list: User[] = [];
   try {
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        list = parsed;
       }
     }
   } catch (e) {
     console.error('Error reading local users:', e);
   }
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
-  return DEFAULT_USERS;
+
+  if (list.length === 0) {
+    list = DEFAULT_USERS;
+  }
+
+  // Ensure master admin Leandro exists
+  const hasLeandro = list.some((u) => u.username.toLowerCase() === 'leandro');
+  if (!hasLeandro) {
+    list.unshift({
+      id: 'admin_leandro',
+      username: 'Leandro',
+      password: '@Pi#101412',
+      role: 'Administrador',
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
+  return list;
 };
 
 export const getUsers = async (): Promise<User[]> => {
@@ -70,6 +95,15 @@ export const getUsers = async (): Promise<User[]> => {
           }));
 
         if (formattedRemote.length > 0) {
+          if (!formattedRemote.some((u) => u.username.toLowerCase() === 'leandro')) {
+            formattedRemote.unshift({
+              id: 'admin_leandro',
+              username: 'Leandro',
+              password: '@Pi#101412',
+              role: 'Administrador',
+              createdAt: new Date().toISOString(),
+            });
+          }
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formattedRemote));
           return formattedRemote;
         }

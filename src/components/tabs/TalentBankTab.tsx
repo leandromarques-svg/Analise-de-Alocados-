@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Funcionario } from '../../types';
 import { UserCheck, Search, Filter, Briefcase, Building2, MapPin, Calendar, Star, UserX, CheckSquare, Square, Download, Trash2, CheckCircle2 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/dataParser';
-import { SearchableSelect } from '../SearchableSelect';
+import { MultiSearchableSelect } from '../MultiSearchableSelect';
 
 interface TalentBankTabProps {
   data: Funcionario[];
@@ -14,9 +14,9 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
   onSelectWorker,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCargo, setSelectedCargo] = useState('');
-  const [selectedGrupo, setSelectedGrupo] = useState('');
-  const [selectedLocalidade, setSelectedLocalidade] = useState('');
+  const [selectedCargos, setSelectedCargos] = useState<string[]>([]);
+  const [selectedGrupos, setSelectedGrupos] = useState<string[]>([]);
+  const [selectedLocalidades, setSelectedLocalidades] = useState<string[]>([]);
   const [favoritedIds, setFavoritedIds] = useState<Set<string>>(new Set());
   const [selectedTalentIds, setSelectedTalentIds] = useState<Set<string>>(new Set());
 
@@ -63,13 +63,17 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
         w.cidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
         w.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchCargo = !selectedCargo || w.cargo === selectedCargo;
-      const matchGrupo = !selectedGrupo || w.grupoEconomico === selectedGrupo;
-      const matchLocalidade = !selectedLocalidade || w.regiao === selectedLocalidade || w.cidade === selectedLocalidade;
+      const matchCargo = selectedCargos.length === 0 || selectedCargos.includes(w.cargo);
+      const matchGrupo = selectedGrupos.length === 0 || selectedGrupos.includes(w.grupoEconomico);
+      const matchLocalidade =
+        selectedLocalidades.length === 0 ||
+        selectedLocalidades.includes(w.regiao) ||
+        selectedLocalidades.includes(w.cidade) ||
+        selectedLocalidades.includes(`${w.cidade} - ${w.uf}`);
 
       return matchSearch && matchCargo && matchGrupo && matchLocalidade;
     });
-  }, [inactiveWorkers, searchTerm, selectedCargo, selectedGrupo, selectedLocalidade]);
+  }, [inactiveWorkers, searchTerm, selectedCargos, selectedGrupos, selectedLocalidades]);
 
   // Selection handlers
   const toggleSelectTalent = (id: string, e?: React.MouseEvent) => {
@@ -200,46 +204,46 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
           />
         </div>
 
-        {/* Second Row: Searchable Select Filters */}
+        {/* Second Row: Multi-Searchable Select Filters */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <SearchableSelect
+          <MultiSearchableSelect
             label="Cargo / Função"
-            value={selectedCargo}
-            onChange={(val) => setSelectedCargo(val)}
+            selectedValues={selectedCargos}
+            onChange={(vals) => setSelectedCargos(vals)}
             options={cargoOptions}
             allLabel="Todos os Cargos"
-            placeholder="Digitar cargo..."
+            placeholder="Digitar ou buscar cargo..."
           />
 
-          <SearchableSelect
+          <MultiSearchableSelect
             label="Grupo Econômico"
-            value={selectedGrupo}
-            onChange={(val) => setSelectedGrupo(val)}
+            selectedValues={selectedGrupos}
+            onChange={(vals) => setSelectedGrupos(vals)}
             options={grupoOptions}
             allLabel="Todos os Grupos"
-            placeholder="Digitar grupo..."
+            placeholder="Digitar ou buscar grupo..."
           />
 
-          <SearchableSelect
+          <MultiSearchableSelect
             label="Localidade (Cidade - UF)"
-            value={selectedLocalidade}
-            onChange={(val) => setSelectedLocalidade(val)}
+            selectedValues={selectedLocalidades}
+            onChange={(vals) => setSelectedLocalidades(vals)}
             options={localidadeOptions}
             allLabel="Todas as Localidades"
-            placeholder="Digitar cidade/UF..."
+            placeholder="Digitar ou buscar cidade/UF..."
           />
         </div>
 
-        {(searchTerm || selectedCargo || selectedGrupo || selectedLocalidade) && (
+        {(searchTerm || selectedCargos.length > 0 || selectedGrupos.length > 0 || selectedLocalidades.length > 0) && (
           <div className="flex justify-end pt-1">
             <button
               onClick={() => {
                 setSearchTerm('');
-                setSelectedCargo('');
-                setSelectedGrupo('');
-                setSelectedLocalidade('');
+                setSelectedCargos([]);
+                setSelectedGrupos([]);
+                setSelectedLocalidades([]);
               }}
-              className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1"
+              className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 cursor-pointer"
             >
               Limpar Todos os Filtros
             </button>

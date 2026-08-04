@@ -49,6 +49,13 @@ export default function App() {
   const [filters, setFilters] = useState<FilterOptions>(initialFilters);
   const [selectedWorker, setSelectedWorker] = useState<Funcionario | null>(null);
 
+  // Safety redirect for Cliente role
+  useEffect(() => {
+    if (currentUser?.role === 'Cliente' && (activeTab === 'groups' || activeTab === 'talent_bank')) {
+      setActiveTab('overview');
+    }
+  }, [currentUser, activeTab]);
+
   const handleLogout = () => {
     logoutUser();
     setCurrentUser(null);
@@ -296,6 +303,7 @@ export default function App() {
           availableClientes={availableClientes}
           totalFilteredCount={filteredData.length}
           totalUnfilteredCount={roleFilteredData.length}
+          currentUser={currentUser}
         />
 
         {/* Top KPI Summary Cards */}
@@ -403,29 +411,33 @@ export default function App() {
                 Contratos a Vencer
               </button>
 
-              <button
-                onClick={() => setActiveTab('groups')}
-                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                  activeTab === 'groups'
-                    ? 'bg-[#401669] text-white shadow-xs'
-                    : 'text-purple-900 hover:bg-purple-100/70'
-                }`}
-              >
-                <Building2 className="w-4 h-4" />
-                Grupos Econômicos
-              </button>
+              {currentUser?.role !== 'Cliente' && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('groups')}
+                    className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                      activeTab === 'groups'
+                        ? 'bg-[#401669] text-white shadow-xs'
+                        : 'text-purple-900 hover:bg-purple-100/70'
+                    }`}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    Grupos Econômicos
+                  </button>
 
-              <button
-                onClick={() => setActiveTab('talent_bank')}
-                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                  activeTab === 'talent_bank'
-                    ? 'bg-[#401669] text-white shadow-xs'
-                    : 'text-purple-900 hover:bg-purple-100/70'
-                }`}
-              >
-                <UserCheck className="w-4 h-4 text-amber-500 fill-amber-400" />
-                Banco de Talentos
-              </button>
+                  <button
+                    onClick={() => setActiveTab('talent_bank')}
+                    className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                      activeTab === 'talent_bank'
+                        ? 'bg-[#401669] text-white shadow-xs'
+                        : 'text-purple-900 hover:bg-purple-100/70'
+                    }`}
+                  >
+                    <UserCheck className="w-4 h-4 text-amber-500 fill-amber-400" />
+                    Banco de Talentos
+                  </button>
+                </>
+              )}
 
               <button
                 onClick={() => setActiveTab('table')}

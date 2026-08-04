@@ -27,7 +27,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     try {
       const users = await getUsers();
       const found = users.find(
-        (u) => u.username.toLowerCase() === username.trim().toLowerCase() && (u.password === password || u.password === '123' || !u.password)
+        (u) =>
+          u.username.toLowerCase() === username.trim().toLowerCase() &&
+          (u.password === password || (u.password === '123' && password === '123') || !u.password)
       );
 
       if (found) {
@@ -70,12 +72,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
 
         {/* Header Titles */}
-        <h2 className="text-2xl font-black text-[#2e0954] mb-1 tracking-tight text-center">
+        <h2 className="text-2xl font-black text-[#2e0954] mb-6 tracking-tight text-center">
           Boas Vindas
         </h2>
-        <p className="text-xs text-slate-500 text-center mb-8 leading-relaxed max-w-xs">
-          Acesse para conhecer a nossa Árvore de Soluções e gerenciar suas propostas
-        </p>
 
         {/* Error Alert */}
         {errorMsg && (
@@ -132,31 +131,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        {/* Demo Login Shortcuts */}
-        <div className="mt-6 w-full pt-4 border-t border-slate-100 flex flex-col items-center">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Acessos Rápidos de Demonstração:</p>
-          <div className="flex flex-wrap justify-center gap-1.5">
-            <button
-              onClick={() => { setUsername('admin'); setPassword('123'); }}
-              className="text-[10px] bg-purple-50 text-purple-900 font-bold px-2.5 py-1 rounded-lg hover:bg-purple-100 cursor-pointer border border-purple-200"
-            >
-              Admin
-            </button>
-            <button
-              onClick={() => { setUsername('colaborador'); setPassword('123'); }}
-              className="text-[10px] bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded-lg hover:bg-slate-200 cursor-pointer border border-slate-200"
-            >
-              Colaborador
-            </button>
-            <button
-              onClick={() => { setUsername('cliente'); setPassword('123'); }}
-              className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-1 rounded-lg hover:bg-emerald-100 cursor-pointer border border-emerald-200"
-            >
-              Cliente
-            </button>
-          </div>
-        </div>
 
         {/* Card Footer */}
         <div className="mt-8 text-[11px] text-slate-400 font-medium text-center">

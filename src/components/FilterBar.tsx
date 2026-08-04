@@ -1,6 +1,6 @@
 import React from 'react';
-import { Search, Filter, X, RotateCcw, ChevronDown } from 'lucide-react';
-import { FilterOptions } from '../types';
+import { Search, Filter, X, RotateCcw, ChevronDown, Lock } from 'lucide-react';
+import { FilterOptions, User } from '../types';
 import { SearchableSelect } from './SearchableSelect';
 
 interface FilterBarProps {
@@ -14,6 +14,7 @@ interface FilterBarProps {
   availableClientes: string[];
   totalFilteredCount: number;
   totalUnfilteredCount: number;
+  currentUser?: User | null;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -27,6 +28,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   availableClientes,
   totalFilteredCount,
   totalUnfilteredCount,
+  currentUser,
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
 
@@ -158,14 +160,28 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         <div className="mt-4 pt-4 border-t border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-fadeIn">
           
           {/* Grupo Econômico Select */}
-          <SearchableSelect
-            label="Grupo Econômico"
-            value={filters.grupoEconomico}
-            onChange={(val) => onChange({ ...filters, grupoEconomico: val })}
-            options={availableGrupos}
-            allLabel="Todos os Grupos"
-            placeholder="Buscar grupo..."
-          />
+          {currentUser?.role === 'Cliente' && currentUser.grupoEconomico ? (
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                Grupo Econômico <Lock className="w-3 h-3 text-[#401669]" />
+              </label>
+              <div className="w-full text-xs bg-purple-50/80 border border-purple-200 rounded-lg p-2.5 text-purple-900 font-bold flex items-center justify-between cursor-not-allowed">
+                <span className="truncate">{currentUser.grupoEconomico}</span>
+                <span className="text-[9px] uppercase font-bold tracking-wider bg-purple-200 text-purple-900 px-1.5 py-0.5 rounded flex-shrink-0">
+                  Fixo (Cliente)
+                </span>
+              </div>
+            </div>
+          ) : (
+            <SearchableSelect
+              label="Grupo Econômico"
+              value={filters.grupoEconomico}
+              onChange={(val) => onChange({ ...filters, grupoEconomico: val })}
+              options={availableGrupos}
+              allLabel="Todos os Grupos"
+              placeholder="Buscar grupo..."
+            />
+          )}
 
           {/* Ano (Admissão / Demissão) */}
           <SearchableSelect
