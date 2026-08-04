@@ -19,13 +19,20 @@ const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes cache
 
 function loadDiskCache() {
   try {
-    if (fs.existsSync(DISK_CACHE_PATH)) {
-      const raw = fs.readFileSync(DISK_CACHE_PATH, 'utf8');
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0) {
-        cachedData = parsed.data;
-        lastFetchTime = parsed.fetchedAt ? new Date(parsed.fetchedAt).getTime() : Date.now();
-        console.log(`[METARH Cache] Loaded ${cachedData.length} records from disk cache file.`);
+    const pathsToTry = [
+      DISK_CACHE_PATH,
+      path.join(process.cwd(), 'public', 'metarh_cache_18k.json'),
+    ];
+    for (const cachePath of pathsToTry) {
+      if (fs.existsSync(cachePath)) {
+        const raw = fs.readFileSync(cachePath, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0) {
+          cachedData = parsed.data;
+          lastFetchTime = parsed.fetchedAt ? new Date(parsed.fetchedAt).getTime() : Date.now();
+          console.log(`[METARH Cache] Loaded ${cachedData.length} records from disk cache file (${cachePath}).`);
+          break;
+        }
       }
     }
   } catch (err) {
@@ -50,7 +57,7 @@ function saveDiskCache(data: any[], fetchedAtIso: string) {
 }
 
 async function fetchFromGoogleScript() {
-  console.log('[METARH Sync] Initiating fetch from Google Apps Script (18,000+ records)...');
+  console.log('[METARH Sync] Initiating fetch from Google Apps Script...');
   const response = await fetch(GOOGLE_SCRIPT_URL, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',

@@ -9,7 +9,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({
   lastUpdated,
-  totalRecords = 18000,
+  totalRecords = 0,
 }) => {
   return (
     <footer className="bg-[#ede4f5] text-slate-700 text-xs border-t border-[#dfd2ee] mt-12 py-10 transition-colors">

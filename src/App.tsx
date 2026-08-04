@@ -107,13 +107,33 @@ export default function App() {
         }
       }
     } catch (e) {
-      console.warn('Endpoint /api/alocados demorou ou falhou, tentando conexão direta ao Google Apps Script:', e);
+      console.warn('Endpoint /api/alocados demorou ou falhou:', e);
     }
 
-    // 2. If endpoint timed out or failed, fetch DIRECTLY from Google Apps Script (loads all 18,715 records)
-    if (!rawData) {
+    // 2. Fallback: fetch directly from public static asset /metarh_cache_18k.json (serves as base cache)
+    if (!rawData || rawData.length === 0) {
       try {
-        console.log('Iniciando busca direta de 18.715 registros do Google Apps Script...');
+        console.log('Carregando base do cache estático inicial /metarh_cache_18k.json...');
+        const res = await fetch('/metarh_cache_18k.json');
+        if (res.ok) {
+          const json = await res.json();
+          const items = Array.isArray(json) ? json : (json.data || []);
+          if (Array.isArray(items) && items.length > 0) {
+            rawData = items;
+            source = 'cache';
+            fetchedAt = json.fetchedAt || new Date().toISOString();
+            console.log(`[Static Cache] Sucesso ao carregar ${items.length} registros do cache estático.`);
+          }
+        }
+      } catch (e) {
+        console.warn('Busca no arquivo de cache estático falhou:', e);
+      }
+    }
+
+    // 3. If direct static file wasn't reached, fetch DIRECTLY from Google Apps Script
+    if (!rawData || rawData.length === 0) {
+      try {
+        console.log('Iniciando busca direta de registros do Google Apps Script...');
         const res = await fetch(DIRECT_GOOGLE_SCRIPT_URL, {
           headers: { Accept: 'application/json, text/plain, */*' },
         });
@@ -134,8 +154,8 @@ export default function App() {
       }
     }
 
-    // 3. If direct fetch also failed (e.g. CORS restrictions), try CORS proxy fallback
-    if (!rawData) {
+    // 4. CORS Proxy Fallback
+    if (!rawData || rawData.length === 0) {
       try {
         const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(DIRECT_GOOGLE_SCRIPT_URL)}`;
         const res = await fetch(proxyUrl);
@@ -159,24 +179,42 @@ export default function App() {
       setDataSource(source);
       setLastUpdated(fetchedAt);
 
-      // Save all 18,715 records into persistent IndexedDB cache asynchronously
+      // Save records into persistent IndexedDB cache asynchronously
       saveLocalCache({
         data: normalized,
         fetchedAt,
         source,
-      }).catch((e) => console.warn('Erro ao salvar cache de 18k registros no IndexedDB:', e));
+      }).catch((e) => console.warn('Erro ao salvar cache no IndexedDB:', e));
     } else {
-      // 4. Fallback: restore from local cache or fallback static data if state is empty
+      // 5. Final Fallback: restore from local cache IndexedDB or retry static cache
       const cached = await getLocalCache();
-      if (cached && Array.isArray(cached.data) && cached.data.length >= 100) {
+      if (cached && Array.isArray(cached.data) && cached.data.length > 0) {
         setData(cached.data);
         setLastUpdated(cached.fetchedAt);
         setDataSource('cache');
-      } else if (data.length === 0) {
-        const normalizedFallback = fallbackData.map((raw, idx) => normalizeFuncionario(raw, idx));
-        setData(normalizedFallback);
-        setDataSource('fallback');
-        setLastUpdated(new Date().toISOString());
+      } else {
+        // Last-ditch fetch from static cache file
+        try {
+          const res = await fetch('/metarh_cache_18k.json');
+          if (res.ok) {
+            const json = await res.json();
+            const items = Array.isArray(json) ? json : (json.data || []);
+            if (Array.isArray(items) && items.length > 0) {
+              const normalized = items.map((raw: FuncionarioRaw, idx: number) => normalizeFuncionario(raw, idx));
+              setData(normalized);
+              setDataSource('cache');
+              setLastUpdated(json.fetchedAt || new Date().toISOString());
+            }
+          }
+        } catch (err) {
+          console.error('Falha crítica ao carregar base total:', err);
+          if (data.length === 0) {
+            const normalizedFallback = fallbackData.map((raw, idx) => normalizeFuncionario(raw, idx));
+            setData(normalizedFallback);
+            setDataSource('fallback');
+            setLastUpdated(new Date().toISOString());
+          }
+        }
       }
     }
 
@@ -535,7 +573,7 @@ export default function App() {
           <div className="bg-white rounded-2xl p-12 text-center shadow-xs border border-slate-200">
             <div className="w-10 h-10 border-4 border-[#401669] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <h3 className="text-base font-bold text-slate-800">Carregando Banco de Dados METARH...</h3>
-            <p className="text-xs text-slate-500 mt-1">Buscando 18.000+ alocações diretamente do Google Apps Script.</p>
+            <p className="text-xs text-slate-500 mt-1">Buscando base de alocações e movimentações do Google Apps Script em tempo real.</p>
           </div>
         ) : (
           <>
@@ -630,7 +668,7 @@ export default function App() {
       <Footer
         lastUpdated={lastUpdated}
         dataSource={dataSource}
-        totalRecords={roleFilteredData.length || 18000}
+        totalRecords={roleFilteredData.length}
       />
 
     </div>
