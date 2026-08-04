@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --metarh-deep-purple: #470082;
+    --metarh-vibrant-purple: #9f04d4;
+    --metarh-electric-purple: #aa3ffe;
+    --metarh-accent-pink: #ff27f9;
+    --metarh-accent-green: #c9f545;
+    --metarh-accent-yellow: #fff24d;
+    --metarh-lavender: #c082ff;
+  }
+
+  body {
+    font-family: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+/* Custom scrollbar styled with METARH theme */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #f1e9f8;
+}
+::-webkit-scrollbar-thumb {
+  background: #c082ff;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9f04d4;
+}
+

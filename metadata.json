@@ -1,0 +1,6 @@
+{
+  "name": "METARH - Dashboard de Alocados e Grupos Econômicos",
+  "description": "Dashboard interativo para análise de alocados, ativos, desligados, salários, cargos e grupos econômicos com base na identidade visual METARH.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

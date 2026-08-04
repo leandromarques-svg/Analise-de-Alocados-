@@ -1,0 +1,409 @@
+import React, { useState, useMemo } from 'react';
+import { Funcionario } from '../../types';
+import { UserCheck, Search, Filter, Briefcase, Building2, MapPin, Calendar, Star, UserX, CheckSquare, Square, Download, Trash2, CheckCircle2 } from 'lucide-react';
+import { formatCurrency, formatDate } from '../../utils/dataParser';
+import { SearchableSelect } from '../SearchableSelect';
+
+interface TalentBankTabProps {
+  data: Funcionario[];
+  onSelectWorker: (worker: Funcionario) => void;
+}
+
+export const TalentBankTab: React.FC<TalentBankTabProps> = ({
+  data,
+  onSelectWorker,
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCargo, setSelectedCargo] = useState('');
+  const [selectedGrupo, setSelectedGrupo] = useState('');
+  const [selectedLocalidade, setSelectedLocalidade] = useState('');
+  const [favoritedIds, setFavoritedIds] = useState<Set<string>>(new Set());
+  const [selectedTalentIds, setSelectedTalentIds] = useState<Set<string>>(new Set());
+
+  // Filter only inactive / desligados employees
+  const inactiveWorkers = useMemo(() => {
+    return data.filter((w) => !w.isAtivo || w.dataDemissao || w.status === 'desligado');
+  }, [data]);
+
+  // Derived filter options
+  const cargoOptions = useMemo(() => {
+    const set = new Set<string>();
+    inactiveWorkers.forEach((w) => {
+      if (w.cargo) set.add(w.cargo);
+    });
+    return Array.from(set).sort();
+  }, [inactiveWorkers]);
+
+  const grupoOptions = useMemo(() => {
+    const set = new Set<string>();
+    inactiveWorkers.forEach((w) => {
+      if (w.grupoEconomico) set.add(w.grupoEconomico);
+    });
+    return Array.from(set).sort();
+  }, [inactiveWorkers]);
+
+  const localidadeOptions = useMemo(() => {
+    const set = new Set<string>();
+    inactiveWorkers.forEach((w) => {
+      if (w.regiao) set.add(w.regiao);
+      else if (w.cidade && w.uf) set.add(`${w.cidade} - ${w.uf}`);
+    });
+    return Array.from(set).sort();
+  }, [inactiveWorkers]);
+
+  // Filtered workers
+  const filteredTalents = useMemo(() => {
+    return inactiveWorkers.filter((w) => {
+      const matchSearch =
+        searchTerm === '' ||
+        w.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        w.cargo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        w.grupoEconomico.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        w.regiao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        w.cidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        w.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchCargo = !selectedCargo || w.cargo === selectedCargo;
+      const matchGrupo = !selectedGrupo || w.grupoEconomico === selectedGrupo;
+      const matchLocalidade = !selectedLocalidade || w.regiao === selectedLocalidade || w.cidade === selectedLocalidade;
+
+      return matchSearch && matchCargo && matchGrupo && matchLocalidade;
+    });
+  }, [inactiveWorkers, searchTerm, selectedCargo, selectedGrupo, selectedLocalidade]);
+
+  // Selection handlers
+  const toggleSelectTalent = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedTalentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllVisible = () => {
+    setSelectedTalentIds((prev) => {
+      const next = new Set(prev);
+      filteredTalents.slice(0, 100).forEach((w) => next.add(w.id));
+      return next;
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedTalentIds(new Set());
+  };
+
+  const toggleFavorite = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFavoritedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Export selected or filtered talents to CSV
+  const handleExportCSV = () => {
+    const listToExport = selectedTalentIds.size > 0
+      ? inactiveWorkers.filter((w) => selectedTalentIds.has(w.id))
+      : filteredTalents;
+
+    if (listToExport.length === 0) return;
+
+    const headers = [
+      'Código',
+      'Nome do Profissional',
+      'Cargo',
+      'Grupo Econômico',
+      'Empresa',
+      'Cliente',
+      'Região / Localidade',
+      'Cidade',
+      'UF',
+      'Data Admissão',
+      'Data Desligamento',
+      'Motivo Desligamento',
+      'Telefone / Celular',
+      'E-mail',
+      'Salário Base (R$)'
+    ];
+
+    const rows = listToExport.map((w) => [
+      `"${w.id}"`,
+      `"${(w.nome || '').replace(/"/g, '""')}"`,
+      `"${(w.cargo || '').replace(/"/g, '""')}"`,
+      `"${(w.grupoEconomico || '').replace(/"/g, '""')}"`,
+      `"${(w.empresa || '').replace(/"/g, '""')}"`,
+      `"${(w.nomeCliente || '').replace(/"/g, '""')}"`,
+      `"${(w.regiao || '').replace(/"/g, '""')}"`,
+      `"${(w.cidade || '').replace(/"/g, '""')}"`,
+      `"${(w.uf || '').replace(/"/g, '""')}"`,
+      `"${w.dataAdmissao || ''}"`,
+      `"${w.dataDemissao || ''}"`,
+      `"${(w.motivoDesligamento || '').replace(/"/g, '""')}"`,
+      `"${w.celular || w.telefone || ''}"`,
+      `"${w.emailCorporativo || ''}"`,
+      `"${w.salario || 0}"`,
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Banco_de_Talentos_METARH_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="space-y-6 animate-fadeIn">
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-[#401669] to-purple-900 text-white p-6 rounded-2xl shadow-sm relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="bg-purple-800/80 text-purple-200 text-xs px-3 py-1 rounded-full font-semibold border border-purple-700/50 flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5" /> Gestão de Recrutamento & Qualificação
+              </span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight">Banco de Talentos METARH</h2>
+            <p className="text-xs md:text-sm text-purple-200 mt-1 max-w-2xl">
+              Catálogo inteligente de ex-colaboradores e profissionais desligados com histórico validado para reaproveitamento em novas vagas e processos seletivos.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/20 flex-shrink-0">
+            <UserX className="w-8 h-8 text-purple-300" />
+            <div>
+              <p className="text-2xl font-extrabold">{inactiveWorkers.length.toLocaleString('pt-BR')}</p>
+              <p className="text-[10px] uppercase tracking-wider text-purple-200 font-semibold">Talentos Inativos Registrados</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Controls Bar */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col space-y-3">
+        {/* Top Row: Search input */}
+        <div className="relative w-full">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Digitar nome, cargo, grupo econômico, cliente, cidade..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#401669] focus:bg-white text-slate-800"
+          />
+        </div>
+
+        {/* Second Row: Searchable Select Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <SearchableSelect
+            label="Cargo / Função"
+            value={selectedCargo}
+            onChange={(val) => setSelectedCargo(val)}
+            options={cargoOptions}
+            allLabel="Todos os Cargos"
+            placeholder="Digitar cargo..."
+          />
+
+          <SearchableSelect
+            label="Grupo Econômico"
+            value={selectedGrupo}
+            onChange={(val) => setSelectedGrupo(val)}
+            options={grupoOptions}
+            allLabel="Todos os Grupos"
+            placeholder="Digitar grupo..."
+          />
+
+          <SearchableSelect
+            label="Localidade (Cidade - UF)"
+            value={selectedLocalidade}
+            onChange={(val) => setSelectedLocalidade(val)}
+            options={localidadeOptions}
+            allLabel="Todas as Localidades"
+            placeholder="Digitar cidade/UF..."
+          />
+        </div>
+
+        {(searchTerm || selectedCargo || selectedGrupo || selectedLocalidade) && (
+          <div className="flex justify-end pt-1">
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCargo('');
+                setSelectedGrupo('');
+                setSelectedLocalidade('');
+              }}
+              className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1"
+            >
+              Limpar Todos os Filtros
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Selection & Export Action Bar */}
+      <div className="bg-[#401669] text-white p-4 rounded-xl shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="bg-purple-800/80 px-3 py-1.5 rounded-lg border border-purple-700/60 text-xs font-bold flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-[#c9f545]" />
+            <span>{selectedTalentIds.size} talentos selecionados</span>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            <button
+              onClick={selectAllVisible}
+              className="text-purple-200 hover:text-white underline cursor-pointer font-medium"
+            >
+              Selecionar exibidos ({Math.min(filteredTalents.length, 100)})
+            </button>
+            {selectedTalentIds.size > 0 && (
+              <button
+                onClick={clearSelection}
+                className="text-rose-300 hover:text-rose-100 underline cursor-pointer font-medium"
+              >
+                Desmarcar todos
+              </button>
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={handleExportCSV}
+          className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer bg-[#c9f545] text-[#401669] hover:bg-lime-400 shadow-sm"
+        >
+          <Download className="w-4 h-4" />
+          <span>
+            {selectedTalentIds.size > 0
+              ? `Baixar Selecionados em CSV (${selectedTalentIds.size})`
+              : `Baixar Lista Filtrada em CSV (${filteredTalents.length})`}
+          </span>
+        </button>
+      </div>
+
+      {/* Cards Grid */}
+      {filteredTalents.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
+          <UserX className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-slate-700">Nenhum talento encontrado</h3>
+          <p className="text-xs text-slate-500 mt-1">Tente ajustar seus termos de busca ou filtros de seleção.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTalents.slice(0, 90).map((worker) => {
+            const isStarred = favoritedIds.has(worker.id);
+            const isSelected = selectedTalentIds.has(worker.id);
+
+            return (
+              <div
+                key={worker.id}
+                className={`bg-white rounded-2xl border p-5 shadow-xs transition-all cursor-pointer flex flex-col justify-between group relative ${
+                  isSelected
+                    ? 'border-[#401669] ring-2 ring-[#401669]/20 bg-purple-50/20'
+                    : 'border-slate-200/80 hover:shadow-md hover:border-purple-300'
+                }`}
+              >
+                <div>
+                  {/* Top Bar: Checkbox + Avatar + Star */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {/* Checkbox */}
+                      <button
+                        onClick={(e) => toggleSelectTalent(worker.id, e)}
+                        className={`p-1 rounded-md transition-colors cursor-pointer ${
+                          isSelected ? 'text-[#401669]' : 'text-slate-300 hover:text-slate-500'
+                        }`}
+                        title={isSelected ? 'Desmarcar profissional' : 'Selecionar profissional para lista'}
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-5 h-5 fill-[#401669] text-white" />
+                        ) : (
+                          <Square className="w-5 h-5" />
+                        )}
+                      </button>
+
+                      <div className="w-9 h-9 rounded-xl bg-purple-100 text-[#401669] flex items-center justify-center font-bold text-xs border border-purple-200 flex-shrink-0">
+                        {worker.nome.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+                      </div>
+
+                      <div className="min-w-0">
+                        <h4
+                          onClick={() => onSelectWorker(worker)}
+                          className="text-sm font-bold text-slate-800 group-hover:text-[#401669] transition-colors line-clamp-1 hover:underline cursor-pointer"
+                        >
+                          {worker.nome}
+                        </h4>
+                        <span className="inline-block px-2 py-0.5 text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/60 rounded-md mt-0.5">
+                          Desligado em {formatDate(worker.dataDemissao)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={(e) => toggleFavorite(worker.id, e)}
+                      title={isStarred ? 'Remover dos favoritos' : 'Salvar para novo processo'}
+                      className={`p-1.5 rounded-lg border transition-all cursor-pointer flex-shrink-0 ${
+                        isStarred
+                          ? 'bg-amber-50 text-amber-500 border-amber-200'
+                          : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-amber-500'
+                      }`}
+                    >
+                      <Star className={`w-4 h-4 ${isStarred ? 'fill-amber-400' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* Worker Information Body */}
+                  <div
+                    onClick={() => onSelectWorker(worker)}
+                    className="space-y-2 text-xs text-slate-600 bg-slate-50/80 p-3 rounded-xl border border-slate-100 mb-4 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="w-3.5 h-3.5 text-[#401669] flex-shrink-0" />
+                      <span className="font-semibold text-slate-800 line-clamp-1">{worker.cargo}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <span className="line-clamp-1">{worker.grupoEconomico || 'Grupo Não Especificado'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-200/60 text-slate-500">
+                      <span className="flex items-center gap-1 font-medium">
+                        <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                        {worker.regiao || `${worker.cidade || ''} - ${worker.uf || ''}`}
+                      </span>
+
+                      {/* Display salary ONLY if > 0 */}
+                      {worker.salario && worker.salario > 0 ? (
+                        <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                          {formatCurrency(worker.salario)}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Action Link */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px]">
+                  <span className="text-slate-400">
+                    Admissão: {formatDate(worker.dataAdmissao)}
+                  </span>
+                  <button
+                    onClick={() => onSelectWorker(worker)}
+                    className="font-bold text-[#401669] group-hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    Ver Detalhes →
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
