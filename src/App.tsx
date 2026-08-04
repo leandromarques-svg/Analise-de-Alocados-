@@ -73,7 +73,7 @@ export default function App() {
     return data;
   }, [data, currentUser]);
 
-  // Fetch function with background revalidation & persistent cache saving
+  // Fetch function with fast failover, background revalidation & persistent cache saving
   const fetchData = async (forceRefresh = false, isBackground = false) => {
     if (isBackground) {
       setIsBackgroundUpdating(true);
@@ -86,10 +86,15 @@ export default function App() {
     let fetchedAt = new Date().toISOString();
     let source: 'live' | 'cache' | 'stale_cache' | 'fallback' = 'live';
 
-    // 1. Try local server or Vercel serverless API endpoint (/api/alocados)
+    // 1. Try local server or Vercel serverless API endpoint (/api/alocados) with 12s fast timeout
     try {
       const url = forceRefresh ? '/api/alocados?refresh=true' : '/api/alocados';
-      const res = await fetch(url);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       if (res.ok) {
         const contentType = res.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
@@ -102,13 +107,13 @@ export default function App() {
         }
       }
     } catch (e) {
-      console.warn('Endpoint /api/alocados indisponível, tentando busca direta no Google Script:', e);
+      console.warn('Endpoint /api/alocados demorou ou falhou, tentando conexão direta ao Google Apps Script:', e);
     }
 
-    // 2. If endpoint failed (e.g. static host without server route), fetch DIRECTLY from Google Apps Script
+    // 2. If endpoint timed out or failed, fetch DIRECTLY from Google Apps Script (loads all 18,715 records)
     if (!rawData) {
       try {
-        console.log('Buscando diretamente do Google Apps Script...');
+        console.log('Iniciando busca direta de 18.715 registros do Google Apps Script...');
         const res = await fetch(DIRECT_GOOGLE_SCRIPT_URL, {
           headers: { Accept: 'application/json, text/plain, */*' },
         });
@@ -120,6 +125,7 @@ export default function App() {
               rawData = parsed;
               source = 'live';
               fetchedAt = new Date().toISOString();
+              console.log(`[Google Script Direct] Recebidos ${parsed.length} registros com sucesso!`);
             }
           }
         }
@@ -153,26 +159,24 @@ export default function App() {
       setDataSource(source);
       setLastUpdated(fetchedAt);
 
-      // Save into persistent local storage/IndexedDB asynchronously
+      // Save all 18,715 records into persistent IndexedDB cache asynchronously
       saveLocalCache({
         data: normalized,
         fetchedAt,
         source,
-      }).catch((e) => console.warn('Erro ao salvar cache no navegador:', e));
+      }).catch((e) => console.warn('Erro ao salvar cache de 18k registros no IndexedDB:', e));
     } else {
-      // 4. Last resort: if no network fetch succeeded and state is empty, restore from cache or fallbackData
-      if (data.length === 0) {
-        const cached = await getLocalCache();
-        if (cached && Array.isArray(cached.data) && cached.data.length >= 100) {
-          setData(cached.data);
-          setLastUpdated(cached.fetchedAt);
-          setDataSource('cache');
-        } else {
-          const normalizedFallback = fallbackData.map((raw, idx) => normalizeFuncionario(raw, idx));
-          setData(normalizedFallback);
-          setDataSource('fallback');
-          setLastUpdated(new Date().toISOString());
-        }
+      // 4. Fallback: restore from local cache or fallback static data if state is empty
+      const cached = await getLocalCache();
+      if (cached && Array.isArray(cached.data) && cached.data.length >= 100) {
+        setData(cached.data);
+        setLastUpdated(cached.fetchedAt);
+        setDataSource('cache');
+      } else if (data.length === 0) {
+        const normalizedFallback = fallbackData.map((raw, idx) => normalizeFuncionario(raw, idx));
+        setData(normalizedFallback);
+        setDataSource('fallback');
+        setLastUpdated(new Date().toISOString());
       }
     }
 

@@ -1,5 +1,8 @@
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxovla2YdYk7bIHs4_Z9L8G2N63OtDYrzCQhjAbNvC-Ia3TsLcnWp58bX4GU9RU220R/exec';
 
+// Set max duration for Vercel Serverless Function to allow fetching 18k+ records (~30s)
+export const maxDuration = 60;
+
 export default async function handler(req: any, res: any) {
   // CORS headers for Vercel Serverless Function
   res.setHeader('Access-Control-Allow-Credentials', 'true');

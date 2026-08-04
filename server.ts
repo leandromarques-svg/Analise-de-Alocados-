@@ -91,6 +91,13 @@ async function triggerBackgroundRefresh() {
 // Load disk cache immediately upon module initialization
 loadDiskCache();
 
+// If cache is empty or missing, start background fetch right away on server startup
+if (!cachedData || cachedData.length === 0) {
+  triggerBackgroundRefresh().catch((err) =>
+    console.warn('[METARH Sync] Initial background fetch warning:', err.message)
+  );
+}
+
 app.use(express.json({ limit: '100mb' }));
 
 const APPS_SCRIPT_USER_URL = 'https://script.google.com/macros/s/AKfycbxvEbfCjw5prUCltIj5KWGzilUXsp-tu4fIA_ZYvr5WWJ0k4OoJL7SLOP1ZrnSCejV8/exec';
