@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie
 } from 'recharts';
 import { Funcionario } from '../../types';
+import { getUFName } from '../../utils/dataParser';
 import { MapPin, Building, Users } from 'lucide-react';
 
 interface RegionalTabProps {
@@ -64,17 +65,18 @@ export const RegionalTab: React.FC<RegionalTabProps> = ({ data, onSelectRegiao }
           <div className="space-y-3">
             {ufList.map((item, idx) => {
               const percent = Math.round((item.total / (data.length || 1)) * 1000) / 10;
+              const ufName = getUFName(item.uf);
               return (
                 <div key={item.uf} className="p-3 bg-[#faf6fd] rounded-xl border border-[#f0d4fc] flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span
-                      className="w-8 h-8 rounded-lg font-extrabold text-xs text-white flex items-center justify-center shadow-xs"
+                      className="w-9 h-9 rounded-xl font-extrabold text-xs text-white flex items-center justify-center shadow-xs flex-shrink-0"
                       style={{ backgroundColor: UF_COLORS[idx % UF_COLORS.length] }}
                     >
                       {item.uf}
                     </span>
                     <div>
-                      <p className="text-xs font-bold text-[#470082]">Estado {item.uf}</p>
+                      <p className="text-xs font-bold text-[#470082]">{ufName} ({item.uf})</p>
                       <p className="text-[10px] text-[#78549e]">{item.ativos} Ativos / {item.desligados} Desligados</p>
                     </div>
                   </div>

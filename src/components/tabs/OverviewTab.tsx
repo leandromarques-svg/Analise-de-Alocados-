@@ -5,7 +5,10 @@ import {
 } from 'recharts';
 import { Funcionario, DashboardMetrics } from '../../types';
 import { formatCurrency } from '../../utils/dataParser';
-import { Building2, Award, Users, TrendingUp, Calendar, ArrowLeft, Percent } from 'lucide-react';
+import {
+  Building2, Award, Users, TrendingUp, Calendar, ArrowLeft, Percent,
+  Handshake, UserCheck, DollarSign, Building, ShieldCheck, Mail, Briefcase, CheckCircle2
+} from 'lucide-react';
 
 interface OverviewTabProps {
   data: Funcionario[];
@@ -140,6 +143,90 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
 
   const VINCULO_COLORS = ['#470082', '#0284c7', '#10b981', '#f59e0b', '#ec4899', '#64748b'];
 
+  // 5. Relacionamento METARH x Grupo Econômico Insights
+  const groupInsights = useMemo(() => {
+    const activeGroupName = selectedGrupoFilter || 'Portfólio Geral de Grupos Econômicos';
+
+    const groupRecords = selectedGrupoFilter
+      ? data.filter((d) => d.grupoEconomico === selectedGrupoFilter)
+      : data;
+
+    const totalAllocated = groupRecords.length;
+    const activeAllocated = groupRecords.filter((d) => d.isAtivo).length;
+    const dismissedAllocated = totalAllocated - activeAllocated;
+    const retentionRate = totalAllocated > 0 ? Math.round((activeAllocated / totalAllocated) * 1000) / 10 : 0;
+
+    const totalPayroll = groupRecords.reduce((acc, d) => acc + (d.salario || 0), 0);
+    const avgSalary = totalAllocated > 0 ? totalPayroll / totalAllocated : 0;
+
+    // Clientes dentro do Grupo
+    const clientMap: { [client: string]: { total: number; ativos: number; desligados: number } } = {};
+    groupRecords.forEach((item) => {
+      const c = item.nomeCliente || 'Cliente Padrão';
+      if (!clientMap[c]) clientMap[c] = { total: 0, ativos: 0, desligados: 0 };
+      clientMap[c].total += 1;
+      if (item.isAtivo) clientMap[c].ativos += 1;
+      else clientMap[c].desligados += 1;
+    });
+
+    const clientList = Object.entries(clientMap)
+      .map(([nomeCliente, stats]) => ({ nomeCliente, ...stats }))
+      .sort((a, b) => b.total - a.total);
+
+    // RH Focal Contatos
+    const focalMap: { [focal: string]: number } = {};
+    groupRecords.forEach((item) => {
+      const f = item.rhFocal || 'Não informado';
+      if (f && f !== 'Não informado') {
+        focalMap[f] = (focalMap[f] || 0) + 1;
+      }
+    });
+
+    const focalList = Object.entries(focalMap)
+      .map(([rhFocal, count]) => ({ rhFocal, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Cargos Mais Solicitados no Grupo
+    const cargoGroupMap: { [cargo: string]: { count: number; somaSalario: number } } = {};
+    groupRecords.forEach((item) => {
+      const c = item.cargo || 'Outros';
+      if (!cargoGroupMap[c]) cargoGroupMap[c] = { count: 0, somaSalario: 0 };
+      cargoGroupMap[c].count += 1;
+      cargoGroupMap[c].somaSalario += item.salario || 0;
+    });
+
+    const topCargosGroup = Object.entries(cargoGroupMap)
+      .map(([cargo, data]) => ({
+        cargo,
+        count: data.count,
+        avgSalary: data.count > 0 ? data.somaSalario / data.count : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Histórico de admissões
+    const anos = groupRecords.map((d) => d.anoAdmissao).filter((a): a is number => a !== null && a > 0);
+    const minAno = anos.length > 0 ? Math.min(...anos) : 2018;
+    const maxAno = anos.length > 0 ? Math.max(...anos) : 2026;
+    const anosParceria = Math.max(1, new Date().getFullYear() - minAno);
+
+    return {
+      activeGroupName,
+      totalAllocated,
+      activeAllocated,
+      dismissedAllocated,
+      retentionRate,
+      totalPayroll,
+      avgSalary,
+      clientList,
+      focalList,
+      topCargosGroup,
+      minAno,
+      maxAno,
+      anosParceria,
+    };
+  }, [data, selectedGrupoFilter]);
+
   return (
     <div className="space-y-6 animate-fadeIn">
       
@@ -192,10 +279,13 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                     <XAxis dataKey="mesNome" stroke="#334155" tick={{ fontSize: 11, fontWeight: 600 }} />
                     <YAxis stroke="#64748b" tick={{ fontSize: 11 }} />
                     <Tooltip
-                      formatter={(val: any, name: any) => [
-                        Number(val).toLocaleString('pt-BR') + ' pessoas',
-                        name === 'admissoes' ? 'Admissões' : 'Demissões'
-                      ]}
+                      formatter={(val: any, name: any) => {
+                        const isAdm = name === 'admissoes' || name === 'Admissões';
+                        return [
+                          Number(val).toLocaleString('pt-BR') + ' pessoas',
+                          isAdm ? 'Admissões' : 'Demissões'
+                        ];
+                      }}
                       contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                     />
                     {/* High contrast: Admissões = #0284c7 (Vibrant Blue), Demissões = #ef4444 (Vibrant Red) */}
@@ -218,10 +308,13 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                     <XAxis dataKey="ano" stroke="#334155" tick={{ fontSize: 11, fontWeight: 600 }} />
                     <YAxis stroke="#64748b" tick={{ fontSize: 11 }} />
                     <Tooltip
-                      formatter={(val: any, name: any) => [
-                        Number(val).toLocaleString('pt-BR') + ' pessoas',
-                        name === 'admissoes' ? 'Admissões' : 'Demissões'
-                      ]}
+                      formatter={(val: any, name: any) => {
+                        const isAdm = name === 'admissoes' || name === 'Admissões';
+                        return [
+                          Number(val).toLocaleString('pt-BR') + ' pessoas',
+                          isAdm ? 'Admissões' : 'Demissões'
+                        ];
+                      }}
                       contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                     />
                     {/* High contrast: Admissões = #0284c7 (Vibrant Blue), Demissões = #ef4444 (Vibrant Red) */}
@@ -479,6 +572,224 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           </div>
 
         </div>
+      </div>
+
+      {/* SECTION: Relacionamento METARH x Grupo Econômico */}
+      <div className="bg-gradient-to-br from-white via-purple-50/30 to-slate-50 p-6 rounded-2xl border border-purple-200/80 shadow-sm space-y-6">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-purple-100">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-[#470082] text-white flex items-center justify-center shadow-md flex-shrink-0">
+              <Handshake className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-extrabold text-slate-900 font-['Barlow']">
+                  Relacionamento METARH com o Grupo Econômico
+                </h3>
+                {selectedGrupoFilter && (
+                  <span className="bg-purple-100 text-[#470082] text-[10px] font-black px-2.5 py-0.5 rounded-full border border-purple-200 uppercase tracking-wider">
+                    Filtro Ativo
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Visão consolidada de parceria, capilaridade de clientes, frentes de atendimento e gestão estratégica de RH
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-[#470082] bg-white px-3 py-1.5 rounded-xl border border-purple-200 shadow-2xs">
+              {groupInsights.activeGroupName}
+            </span>
+          </div>
+        </div>
+
+        {/* 4 Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total de Alocações</span>
+              <div className="w-8 h-8 rounded-lg bg-purple-50 text-[#470082] flex items-center justify-center">
+                <Users className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-2xl font-black text-slate-900">{groupInsights.totalAllocated.toLocaleString('pt-BR')}</p>
+            <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-emerald-600">
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>{groupInsights.activeAllocated.toLocaleString('pt-BR')} ativos ({groupInsights.retentionRate}%)</span>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Massa Salarial Gerida</span>
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                <DollarSign className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-xl font-extrabold text-slate-900">{formatCurrency(groupInsights.totalPayroll)}</p>
+            <p className="text-[11px] text-slate-500 mt-1">Média: {formatCurrency(groupInsights.avgSalary)}/colaborador</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Capilaridade de Clientes</span>
+              <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center">
+                <Building className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-2xl font-black text-slate-900">{groupInsights.clientList.length}</p>
+            <p className="text-[11px] text-slate-500 mt-1">Empresas/Unidades no grupo</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Histórico de Parceria</span>
+              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+                <Calendar className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-xl font-extrabold text-slate-900">Desde {groupInsights.minAno}</p>
+            <p className="text-[11px] text-slate-500 mt-1">~{groupInsights.anosParceria} anos de histórico registrado</p>
+          </div>
+
+        </div>
+
+        {/* Detailed Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Left Column: Clientes & Focais RH */}
+          <div className="lg:col-span-6 space-y-4">
+            
+            {/* Clientes Atendidos */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Building2 className="w-4 h-4 text-[#470082]" />
+                  Clientes e Unidades no Grupo ({groupInsights.clientList.length})
+                </span>
+                <span className="text-[10px] text-[#470082] font-semibold">Alocações METARH</span>
+              </h4>
+
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                {groupInsights.clientList.slice(0, 8).map((client, idx) => (
+                  <div key={client.nomeCliente + idx} className="p-2.5 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 font-semibold text-slate-800">
+                      <div className="w-2 h-2 rounded-full bg-[#470082]" />
+                      <span className="truncate max-w-[200px]">{client.nomeCliente}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900">{client.total} vagas</span>
+                      <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
+                        {client.ativos} ativos
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Focais de RH / Gestão */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-[#470082]" />
+                RH Focal & Frentes de Contato ({groupInsights.focalList.length})
+              </h4>
+
+              {groupInsights.focalList.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {groupInsights.focalList.slice(0, 6).map((focal) => (
+                    <div key={focal.rhFocal} className="px-3 py-1.5 bg-purple-50/80 rounded-lg border border-purple-100 text-xs flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5 text-[#470082]" />
+                      <span className="font-bold text-slate-800">{focal.rhFocal}</span>
+                      <span className="text-[10px] bg-[#470082] text-white font-extrabold px-1.5 py-0.2 rounded-full">
+                        {focal.count}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">Nenhum RH Focal específico informado no cadastro.</p>
+              )}
+            </div>
+
+          </div>
+
+          {/* Right Column: Cargos Mais Demandados & Executive Summary */}
+          <div className="lg:col-span-6 space-y-4">
+            
+            {/* Top Cargos no Grupo */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Briefcase className="w-4 h-4 text-[#470082]" />
+                  Principais Cargos Alocados no Grupo
+                </span>
+                <span className="text-[10px] text-slate-400">Média Salarial</span>
+              </h4>
+
+              <div className="space-y-2">
+                {groupInsights.topCargosGroup.map((cargoItem, idx) => (
+                  <div
+                    key={cargoItem.cargo + idx}
+                    onClick={() => onSelectCargo(cargoItem.cargo)}
+                    className="p-2.5 bg-slate-50 hover:bg-purple-50/60 rounded-lg border border-slate-100 flex items-center justify-between text-xs cursor-pointer transition-all group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded bg-purple-100 text-[#470082] font-black text-[10px] flex items-center justify-center">
+                        #{idx + 1}
+                      </span>
+                      <span className="font-bold text-slate-800 group-hover:text-[#470082] transition-colors truncate max-w-[220px]">
+                        {cargoItem.cargo}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-extrabold text-[#470082]">{cargoItem.count} vagas</span>
+                      <p className="text-[10px] text-slate-500">{formatCurrency(cargoItem.avgSalary)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Relatório Sintético de Saúde da Conta / Executive Insights */}
+            <div className="bg-gradient-to-r from-[#470082] to-[#6b0fba] p-4 rounded-xl text-white shadow-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                  <span className="font-bold text-xs uppercase tracking-wider text-purple-100">
+                    Resumo Executivo do Relacionamento METARH
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded text-white">
+                  Status: Conta Saudável
+                </span>
+              </div>
+
+              <p className="text-xs text-purple-100 leading-relaxed pt-1">
+                A METARH mantém alocação estratégica de <strong>{groupInsights.totalAllocated.toLocaleString('pt-BR')} profissionais</strong> para o grupo <strong>{groupInsights.activeGroupName}</strong>, apresentando uma taxa de retenção ativa de <strong>{groupInsights.retentionRate}%</strong>.
+              </p>
+
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/20 text-[11px]">
+                <div className="flex items-center gap-1.5 text-purple-100">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span><strong>{groupInsights.clientList.length}</strong> empresas parceiras</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-purple-100">
+                  <div className="w-1.5 h-1.5 rounded-full bg-sky-300" />
+                  <span><strong>{formatCurrency(groupInsights.totalPayroll)}</strong> massa salarial</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
       </div>
 
     </div>

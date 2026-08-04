@@ -10,6 +10,7 @@ interface FilterBarProps {
   availableGrupos: string[];
   availableAnos: number[];
   availableRegioes: string[];
+  availableUFs: string[];
   availableVinculos: string[];
   availableClientes: string[];
   totalFilteredCount: number;
@@ -24,6 +25,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   availableGrupos,
   availableAnos,
   availableRegioes,
+  availableUFs,
   availableVinculos,
   availableClientes,
   totalFilteredCount,
@@ -38,6 +40,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     filters.vinculo !== '',
     filters.ano !== '',
     filters.regiao !== '',
+    filters.uf !== '',
     filters.cliente !== '',
     filters.cargo !== '',
     filters.searchQuery !== '',
@@ -201,6 +204,16 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             options={availableRegioes}
             allLabel="Todas as Regiões"
             placeholder="Buscar região/cidade..."
+          />
+
+          {/* Estado (UF) */}
+          <SearchableSelect
+            label="Estado (UF)"
+            value={filters.uf}
+            onChange={(val) => onChange({ ...filters, uf: val })}
+            options={availableUFs}
+            allLabel="Todos os Estados (UF)"
+            placeholder="Buscar estado..."
           />
 
           {/* Vínculo Empregatício */}

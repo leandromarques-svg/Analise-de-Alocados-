@@ -233,6 +233,12 @@ export default function App() {
     return Array.from(set).sort();
   }, [roleFilteredData]);
 
+  const availableUFs = useMemo(() => {
+    const set = new Set<string>();
+    roleFilteredData.forEach((d) => { if (d.uf) set.add(d.uf); });
+    return Array.from(set).sort();
+  }, [roleFilteredData]);
+
   const availableVinculos = useMemo(() => {
     const set = new Set<string>();
     roleFilteredData.forEach((d) => { if (d.vinculo) set.add(d.vinculo); });
@@ -268,6 +274,9 @@ export default function App() {
 
       // Região
       if (filters.regiao && item.regiao !== filters.regiao) return false;
+
+      // Estado (UF)
+      if (filters.uf && item.uf !== filters.uf) return false;
 
       // Cliente
       if (filters.cliente && item.nomeCliente !== filters.cliente) return false;
@@ -339,7 +348,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-['Barlow',sans-serif] pb-16">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-['Barlow',sans-serif]">
       
       {/* App Header */}
       <Header
@@ -365,6 +374,7 @@ export default function App() {
           availableGrupos={availableGrupos}
           availableAnos={availableAnos}
           availableRegioes={availableRegioes}
+          availableUFs={availableUFs}
           availableVinculos={availableVinculos}
           availableClientes={availableClientes}
           totalFilteredCount={filteredData.length}

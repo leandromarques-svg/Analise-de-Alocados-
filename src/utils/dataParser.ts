@@ -1,5 +1,137 @@
 import { FuncionarioRaw, Funcionario, DashboardMetrics } from '../types';
 
+export const BRAZIL_UFS: { [code: string]: string } = {
+  AC: 'Acre',
+  AL: 'Alagoas',
+  AP: 'Amapá',
+  AM: 'Amazonas',
+  BA: 'Bahia',
+  CE: 'Ceará',
+  DF: 'Distrito Federal',
+  ES: 'Espírito Santo',
+  GO: 'Goiás',
+  MA: 'Maranhão',
+  MT: 'Mato Grosso',
+  MS: 'Mato Grosso do Sul',
+  MG: 'Minas Gerais',
+  PA: 'Pará',
+  PB: 'Paraíba',
+  PR: 'Paraná',
+  PE: 'Pernambuco',
+  PI: 'Piauí',
+  RJ: 'Rio de Janeiro',
+  RN: 'Rio Grande do Norte',
+  RS: 'Rio Grande do Sul',
+  RO: 'Rondônia',
+  RR: 'Roraima',
+  SC: 'Santa Catarina',
+  SP: 'São Paulo',
+  SE: 'Sergipe',
+  TO: 'Tocantins',
+};
+
+export const RAW_UF_TO_CODE: { [raw: string]: string } = {
+  'MINAS GERAIS': 'MG',
+  'ESTADO MINAS GERAIS': 'MG',
+  'SÃO PAULO': 'SP',
+  'SAO PAULO': 'SP',
+  'ESTADO SP': 'SP',
+  'RIO DE JANEIRO': 'RJ',
+  'ESTADO RJ': 'RJ',
+  'PARANÁ': 'PR',
+  'PARANA': 'PR',
+  'RIO GRANDE DO SUL': 'RS',
+  'SANTA CATARINA': 'SC',
+  'BAHIA': 'BA',
+  'PERNAMBUCO': 'PE',
+  'CEARÁ': 'CE',
+  'CEARA': 'CE',
+  'GOIÁS': 'GO',
+  'GOIAS': 'GO',
+  'DISTRITO FEDERAL': 'DF',
+  'BRASÍLIA': 'DF',
+  'BRASILIA': 'DF',
+  'ESPÍRITO SANTO': 'ES',
+  'ESPIRITO SANTO': 'ES',
+  'MATO GROSSO': 'MT',
+  'MATO GROSSO DO SUL': 'MS',
+  'AMAZONAS': 'AM',
+  'PARÁ': 'PA',
+  'PARA': 'PA',
+  'MARANHÃO': 'MA',
+  'MARANHAO': 'MA',
+  'PARAÍBA': 'PB',
+  'PARAIBA': 'PB',
+  'RIO GRANDE DO NORTE': 'RN',
+  'PIAUÍ': 'PI',
+  'PIAUI': 'PI',
+  'ALAGOAS': 'AL',
+  'SERGIPE': 'SE',
+  'ESTADO SE': 'SE',
+  'RONDÔNIA': 'RO',
+  'RONDONIA': 'RO',
+  'TOCANTINS': 'TO',
+  'ACRE': 'AC',
+  'AMAPÁ': 'AP',
+  'AMAPA': 'AP',
+  'RORAIMA': 'RR',
+  'ESTADO RR': 'RR',
+};
+
+export function parseUFCode(rawUfInput: string): string {
+  if (!rawUfInput) return 'SP';
+  let str = rawUfInput.trim();
+  if (str.toUpperCase().startsWith('ESTADO ')) {
+    str = str.substring(7).trim();
+  }
+  const upper = str.toUpperCase();
+
+  if (BRAZIL_UFS[upper]) return upper;
+  if (RAW_UF_TO_CODE[upper]) return RAW_UF_TO_CODE[upper];
+
+  // Check suffix like /SP, - SP, /MG, - MG, /DF
+  const suffixMatch = str.match(/[\/\-\s](AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/i);
+  if (suffixMatch) {
+    return suffixMatch[1].toUpperCase();
+  }
+
+  if (upper.includes('MINAS')) return 'MG';
+  if (upper.includes('SAO PAULO') || upper.includes('SÃO PAULO')) return 'SP';
+  if (upper.includes('RIO DE JANEIRO')) return 'RJ';
+  if (upper.includes('PERNAMBUCO')) return 'PE';
+  if (upper.includes('BAHIA')) return 'BA';
+  if (upper.includes('CEARA') || upper.includes('CEARÁ')) return 'CE';
+  if (upper.includes('GOIAS') || upper.includes('GOIÁS')) return 'GO';
+  if (upper.includes('PARANA') || upper.includes('PARANÁ')) return 'PR';
+  if (upper.includes('BRASILIA') || upper.includes('BRASÍLIA') || upper.includes('DISTRITO')) return 'DF';
+  if (upper.includes('ESPIRITO') || upper.includes('ESPÍRITO')) return 'ES';
+  if (upper.includes('MATO GROSSO DO SUL')) return 'MS';
+  if (upper.includes('MATO GROSSO')) return 'MT';
+  if (upper.includes('AMAZONAS')) return 'AM';
+  if (upper.includes('SANTA CATARINA')) return 'SC';
+  if (upper.includes('RIO GRANDE DO SUL')) return 'RS';
+  if (upper.includes('RIO GRANDE DO NORTE')) return 'RN';
+  if (upper.includes('SERGIPE')) return 'SE';
+  if (upper.includes('ALAGOAS')) return 'AL';
+  if (upper.includes('MARANHAO') || upper.includes('MARANHÃO')) return 'MA';
+  if (upper.includes('PARAIBA') || upper.includes('PARAÍBA')) return 'PB';
+  if (upper.includes('PIAUI') || upper.includes('PIAUÍ')) return 'PI';
+  if (upper.includes('RONDÔNIA') || upper.includes('RONDONIA')) return 'RO';
+  if (upper.includes('TOCANTINS')) return 'TO';
+  if (upper.includes('RORAIMA')) return 'RR';
+
+  if (upper.length === 2) return upper;
+  return upper.substring(0, 2);
+}
+
+export function getUFName(ufCode: string): string {
+  if (!ufCode) return 'São Paulo';
+  const cleanCode = ufCode.trim().toUpperCase();
+  if (BRAZIL_UFS[cleanCode]) return BRAZIL_UFS[cleanCode];
+  if (RAW_UF_TO_CODE[cleanCode]) return BRAZIL_UFS[RAW_UF_TO_CODE[cleanCode]] || cleanCode;
+  return ufCode;
+}
+
 export function safeStr(val: any): string {
   if (val === null || val === undefined) return '';
   return String(val).trim();
@@ -70,7 +202,10 @@ export function formatCurrency(value: number): string {
 
 export function normalizeFuncionario(raw: FuncionarioRaw | any, idx: number): Funcionario {
   if (raw && typeof raw.id !== 'undefined' && typeof raw.isAtivo !== 'undefined' && typeof raw.grupoEconomico !== 'undefined') {
-    return raw as Funcionario;
+    return {
+      ...(raw as Funcionario),
+      uf: parseUFCode((raw as Funcionario).uf),
+    };
   }
 
   const dataDemissaoRaw = raw['Data Demissão'];
@@ -83,9 +218,10 @@ export function normalizeFuncionario(raw: FuncionarioRaw | any, idx: number): Fu
     const parts = regiaoRaw.split(' - ');
     if (parts.length >= 2) {
       cidade = parts[0].trim();
-      uf = parts[1].trim();
+      uf = parseUFCode(parts[1].trim());
     } else {
       cidade = regiaoRaw;
+      uf = parseUFCode(regiaoRaw);
     }
   }
 

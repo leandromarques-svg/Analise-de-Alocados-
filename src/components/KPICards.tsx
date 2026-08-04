@@ -14,7 +14,7 @@ export const KPICards: React.FC<KPICardsProps> = ({ metrics }) => {
       {/* Total Alocados - Bento Module 1 */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ativos Totais</span>
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total da Base</span>
           <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center text-[#470082]">
             <Users className="w-4 h-4" />
           </div>

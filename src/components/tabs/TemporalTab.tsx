@@ -202,10 +202,13 @@ export const TemporalTab: React.FC<TemporalTabProps> = ({
                 <XAxis dataKey="mesNome" stroke="#470082" tick={{ fontSize: 12, fontWeight: 600 }} />
                 <YAxis stroke="#470082" tick={{ fontSize: 12 }} />
                 <Tooltip
-                  formatter={(val: any, name: any) => [
-                    Number(val).toLocaleString('pt-BR') + ' pessoas',
-                    name === 'admissoes' ? 'Admissões' : 'Demissões'
-                  ]}
+                  formatter={(val: any, name: any) => {
+                    const isAdm = name === 'admissoes' || name === 'Admissões';
+                    return [
+                      Number(val).toLocaleString('pt-BR') + ' pessoas',
+                      isAdm ? 'Admissões' : 'Demissões'
+                    ];
+                  }}
                   contentStyle={{ borderRadius: '12px', border: '1px solid #dcb8f7' }}
                 />
                 <Legend wrapperStyle={{ paddingTop: '10px' }} />
@@ -238,6 +241,13 @@ export const TemporalTab: React.FC<TemporalTabProps> = ({
                 <XAxis dataKey="ano" stroke="#470082" tick={{ fontSize: 12, fontWeight: 600 }} />
                 <YAxis stroke="#470082" tick={{ fontSize: 12 }} />
                 <Tooltip
+                  formatter={(val: any, name: any) => {
+                    const isAdm = name === 'admissoes' || name === 'Admissões';
+                    return [
+                      Number(val).toLocaleString('pt-BR') + ' pessoas',
+                      isAdm ? 'Admissões' : 'Demissões'
+                    ];
+                  }}
                   contentStyle={{ borderRadius: '12px', border: '1px solid #dcb8f7', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
                 />
                 <Legend wrapperStyle={{ paddingTop: '10px' }} />

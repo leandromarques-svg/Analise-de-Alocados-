@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell
 } from 'recharts';
 import { Funcionario } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/dataParser';
-import { Award, DollarSign, Briefcase, TrendingUp, Search, ExternalLink } from 'lucide-react';
+import { Award, DollarSign, Briefcase, TrendingUp, Search, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface VacanciesAndSalariesTabProps {
   data: Funcionario[];
   onSelectWorker: (worker: Funcionario) => void;
   onSelectCargo: (cargo: string) => void;
 }
+
+type CargoSortField = 'cargo' | 'totalVagas' | 'ativos' | 'desligados' | 'salarioMedio' | 'maiorSalario';
 
 export const VacanciesAndSalariesTab: React.FC<VacanciesAndSalariesTabProps> = ({
   data,
@@ -19,6 +21,17 @@ export const VacanciesAndSalariesTab: React.FC<VacanciesAndSalariesTabProps> = (
 }) => {
   const [cargoSearch, setCargoSearch] = useState('');
   const [topSalariesStatusFilter, setTopSalariesStatusFilter] = useState<'all' | 'ativo' | 'desligado'>('all');
+  const [cargoSortField, setCargoSortField] = useState<CargoSortField>('totalVagas');
+  const [cargoSortOrder, setCargoSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const handleCargoSort = (field: CargoSortField) => {
+    if (cargoSortField === field) {
+      setCargoSortOrder(cargoSortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setCargoSortField(field);
+      setCargoSortOrder(field === 'cargo' ? 'asc' : 'desc');
+    }
+  };
 
   // 1. Ranking da Quantidade de Vagas por Cargo / Tipo
   const cargoMap: {
@@ -65,6 +78,22 @@ export const VacanciesAndSalariesTab: React.FC<VacanciesAndSalariesTabProps> = (
   const filteredCargoList = cargoList.filter((c) =>
     c.cargo.toLowerCase().includes(cargoSearch.toLowerCase())
   );
+
+  const sortedCargoList = useMemo(() => {
+    return [...filteredCargoList].sort((a, b) => {
+      let valA = a[cargoSortField];
+      let valB = b[cargoSortField];
+
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        const comp = valA.localeCompare(valB, 'pt-BR');
+        return cargoSortOrder === 'asc' ? comp : -comp;
+      }
+
+      const numA = Number(valA) || 0;
+      const numB = Number(valB) || 0;
+      return cargoSortOrder === 'asc' ? numA - numB : numB - numA;
+    });
+  }, [filteredCargoList, cargoSortField, cargoSortOrder]);
 
   const top15CargosBarChart = cargoList.slice(0, 15).map((c) => ({
     ...c,
@@ -307,17 +336,95 @@ export const VacanciesAndSalariesTab: React.FC<VacanciesAndSalariesTabProps> = (
           <table className="w-full text-left text-xs">
             <thead className="bg-[#f4ebfb] text-[#470082] uppercase text-[11px] tracking-wider font-bold sticky top-0 z-10 shadow-xs">
               <tr>
-                <th className="p-3">Cargo / Função</th>
-                <th className="p-3 text-center">Total Vagas</th>
-                <th className="p-3 text-center">Ativos</th>
-                <th className="p-3 text-center">Desligados</th>
-                <th className="p-3 text-right">Salário Médio</th>
-                <th className="p-3 text-right">Maior Salário</th>
+                <th
+                  onClick={() => handleCargoSort('cargo')}
+                  className="p-3 cursor-pointer hover:bg-[#e0c4f8] transition-colors select-none"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Cargo / Função</span>
+                    {cargoSortField === 'cargo' ? (
+                      cargoSortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#ff27f9]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#ff27f9]" />
+                    ) : (
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                    )}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleCargoSort('totalVagas')}
+                  className="p-3 cursor-pointer hover:bg-[#e0c4f8] transition-colors select-none text-center"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Total Vagas</span>
+                    {cargoSortField === 'totalVagas' ? (
+                      cargoSortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#ff27f9]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#ff27f9]" />
+                    ) : (
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                    )}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleCargoSort('ativos')}
+                  className="p-3 cursor-pointer hover:bg-[#e0c4f8] transition-colors select-none text-center"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Ativos</span>
+                    {cargoSortField === 'ativos' ? (
+                      cargoSortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#ff27f9]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#ff27f9]" />
+                    ) : (
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                    )}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleCargoSort('desligados')}
+                  className="p-3 cursor-pointer hover:bg-[#e0c4f8] transition-colors select-none text-center"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Desligados</span>
+                    {cargoSortField === 'desligados' ? (
+                      cargoSortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#ff27f9]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#ff27f9]" />
+                    ) : (
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                    )}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleCargoSort('salarioMedio')}
+                  className="p-3 cursor-pointer hover:bg-[#e0c4f8] transition-colors select-none text-right"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Salário Médio</span>
+                    {cargoSortField === 'salarioMedio' ? (
+                      cargoSortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#ff27f9]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#ff27f9]" />
+                    ) : (
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                    )}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleCargoSort('maiorSalario')}
+                  className="p-3 cursor-pointer hover:bg-[#e0c4f8] transition-colors select-none text-right"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Maior Salário</span>
+                    {cargoSortField === 'maiorSalario' ? (
+                      cargoSortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#ff27f9]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#ff27f9]" />
+                    ) : (
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                    )}
+                  </div>
+                </th>
+
                 <th className="p-3 text-center">Filtrar</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0d4fc] bg-white">
-              {filteredCargoList.slice(0, 50).map((c, idx) => (
+              {sortedCargoList.map((c, idx) => (
                 <tr key={c.cargo + '-' + idx} className="hover:bg-[#faf6fd] transition-colors">
                   <td className="p-3 font-bold text-[#470082]">
                     {c.cargo}
