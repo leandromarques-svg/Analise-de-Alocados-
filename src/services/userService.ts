@@ -75,39 +75,86 @@ const getLocalUsers = (): User[] => {
 export const getUsers = async (): Promise<User[]> => {
   const localUsers = getLocalUsers();
 
-  // Attempt to sync from Google Apps Script DB asynchronously
   try {
-    const res = await fetch(`${APPS_SCRIPT_USER_URL}?action=getUsers&t=${Date.now()}`, {
-      method: 'GET',
-    });
-    if (res.ok) {
-      const remoteData = await res.json();
-      if (Array.isArray(remoteData) && remoteData.length > 0) {
-        const formattedRemote: User[] = remoteData
-          .filter((u: any) => u && (u.username || u.usuario || u.user))
-          .map((u: any) => ({
-            id: String(u.id || u.username || u.usuario || Date.now()),
-            username: String(u.username || u.usuario || u.user).trim(),
-            password: String(u.password || u.senha || '123').trim(),
-            role: (u.role || u.nivel || u.nivelAcesso || 'Colaborador') as UserRole,
-            grupoEconomico: u.grupoEconomico || u.grupo || '',
-            createdAt: u.createdAt || new Date().toISOString(),
-          }));
+    let remoteData: any = null;
 
-        if (formattedRemote.length > 0) {
-          if (!formattedRemote.some((u) => u.username.toLowerCase() === 'leandro')) {
-            formattedRemote.unshift({
-              id: 'admin_leandro',
-              username: 'Leandro',
-              password: '@Pi#101412',
-              role: 'Administrador',
-              createdAt: new Date().toISOString(),
-            });
+    // 1. Try local or Vercel serverless API endpoint first (/api/users)
+    try {
+      const apiRes = await fetch(`/api/users?action=getUsers&t=${Date.now()}`);
+      if (apiRes.ok) {
+        const contentType = apiRes.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const json = await apiRes.json();
+          if (Array.isArray(json)) {
+            remoteData = json;
+          } else if (json && Array.isArray(json.data)) {
+            remoteData = json.data;
           }
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formattedRemote));
-          return formattedRemote;
         }
       }
+    } catch (e) {
+      // ignore endpoint failure, fallback to direct fetch
+    }
+
+    // 2. Fallback to direct Google Apps Script URL
+    if (!remoteData) {
+      const res = await fetch(`${APPS_SCRIPT_USER_URL}?action=getUsers&t=${Date.now()}`, {
+        method: 'GET',
+      });
+      if (res.ok) {
+        remoteData = await res.json();
+      }
+    }
+
+    if (Array.isArray(remoteData) && remoteData.length > 0) {
+      const formattedRemote: User[] = remoteData
+        .filter((u: any) => {
+          if (!u) return false;
+          const uname = String(u.username || u.usuario || u.user || '').trim().toLowerCase();
+          // Filter out empty or header rows
+          return uname !== '' && uname !== 'usuário' && uname !== 'usuario' && uname !== 'username';
+        })
+        .map((u: any) => ({
+          id: String(u.id || u.username || u.usuario || Date.now()),
+          username: String(u.username || u.usuario || u.user).trim(),
+          password: String(u.password || u.senha || '123').trim(),
+          role: (u.role || u.nivel || u.nivelAcesso || 'Colaborador') as UserRole,
+          grupoEconomico: u.grupoEconomico || u.grupo || '',
+          createdAt: u.createdAt || new Date().toISOString(),
+        }));
+
+      // Map to deduplicate by username
+      const userMap = new Map<string, User>();
+
+      // Load DEFAULT_USERS
+      for (const u of DEFAULT_USERS) {
+        userMap.set(u.username.toLowerCase(), u);
+      }
+
+      // Load localUsers
+      for (const u of localUsers) {
+        userMap.set(u.username.toLowerCase(), u);
+      }
+
+      // Merge remoteUsers (overwriting with sheet data)
+      for (const u of formattedRemote) {
+        if (u.username.toLowerCase() === 'leandro') {
+          // preserve admin_leandro password if default
+          userMap.set('leandro', {
+            id: 'admin_leandro',
+            username: 'Leandro',
+            password: u.password && u.password !== 'Senha' ? u.password : '@Pi#101412',
+            role: 'Administrador',
+            createdAt: u.createdAt || new Date().toISOString(),
+          });
+        } else {
+          userMap.set(u.username.toLowerCase(), u);
+        }
+      }
+
+      const mergedList = Array.from(userMap.values());
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(mergedList));
+      return mergedList;
     }
   } catch (e) {
     console.warn('Apps Script User DB unavailable, using local cache:', e);
@@ -159,8 +206,9 @@ export const saveUser = async (user: User): Promise<User[]> => {
     const img = new Image();
     img.src = fullUrl;
 
-    // 2. Fetch GET & POST
+    // 2. Fetch GET & POST to both /api/users and Google Apps Script URL
     Promise.allSettled([
+      fetch(`/api/users?${queryString}`).catch(() => {}),
       fetch(fullUrl, { method: 'GET', mode: 'no-cors' }),
       fetch(APPS_SCRIPT_USER_URL, {
         method: 'POST',
@@ -168,7 +216,11 @@ export const saveUser = async (user: User): Promise<User[]> => {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: queryString,
       }),
-    ]).catch(() => {});
+    ]).then(() => {
+      setTimeout(() => {
+        getUsers().catch(() => {});
+      }, 1000);
+    }).catch(() => {});
   } catch (e) {
     console.warn('Could not post to Apps Script user DB:', e);
   }
@@ -201,6 +253,7 @@ export const deleteUser = async (username: string): Promise<User[]> => {
 
     // 2. Fetch GET & POST
     Promise.allSettled([
+      fetch(`/api/users?${queryString}`).catch(() => {}),
       fetch(fullUrl, { method: 'GET', mode: 'no-cors' }),
       fetch(APPS_SCRIPT_USER_URL, {
         method: 'POST',
@@ -208,7 +261,11 @@ export const deleteUser = async (username: string): Promise<User[]> => {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: queryString,
       }),
-    ]).catch(() => {});
+    ]).then(() => {
+      setTimeout(() => {
+        getUsers().catch(() => {});
+      }, 1000);
+    }).catch(() => {});
   } catch (e) {
     console.warn('Could not delete user on Apps Script user DB:', e);
   }

@@ -93,6 +93,46 @@ loadDiskCache();
 
 app.use(express.json({ limit: '100mb' }));
 
+const APPS_SCRIPT_USER_URL = 'https://script.google.com/macros/s/AKfycbxvEbfCjw5prUCltIj5KWGzilUXsp-tu4fIA_ZYvr5WWJ0k4OoJL7SLOP1ZrnSCejV8/exec';
+
+// API Route to handle users (proxy to Google Apps Script)
+app.all('/api/users', async (req, res) => {
+  try {
+    const action = (req.query.action || req.body?.action || 'getUsers').toString();
+    const params = new URLSearchParams();
+    
+    // Copy query params
+    for (const [k, v] of Object.entries(req.query)) {
+      params.append(k, String(v));
+    }
+
+    if (req.method === 'POST' && req.body) {
+      for (const [k, v] of Object.entries(req.body)) {
+        params.append(k, String(v));
+      }
+    }
+
+    const targetUrl = `${APPS_SCRIPT_USER_URL}?${params.toString()}`;
+    const response = await fetch(targetUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Accept': 'application/json, text/plain, */*'
+      },
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({ success: false, error: 'Erro ao conectar ao Google Script' });
+    }
+
+    const data = await response.json();
+    return res.json(data);
+  } catch (err: any) {
+    console.error('Error in /api/users proxy:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // API Route to fetch allocated workers
 app.get('/api/alocados', async (req, res) => {
   const forceRefresh = req.query.refresh === 'true';

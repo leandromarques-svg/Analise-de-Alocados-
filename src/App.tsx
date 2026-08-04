@@ -81,41 +81,103 @@ export default function App() {
       setIsLoading(true);
     }
 
+    const DIRECT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxovla2YdYk7bIHs4_Z9L8G2N63OtDYrzCQhjAbNvC-Ia3TsLcnWp58bX4GU9RU220R/exec';
+    let rawData: any[] | null = null;
+    let fetchedAt = new Date().toISOString();
+    let source: 'live' | 'cache' | 'stale_cache' | 'fallback' = 'live';
+
+    // 1. Try local server or Vercel serverless API endpoint (/api/alocados)
     try {
       const url = forceRefresh ? '/api/alocados?refresh=true' : '/api/alocados';
       const res = await fetch(url);
-      const json = await res.json();
-
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        const normalized = json.data.map((raw: FuncionarioRaw, idx: number) => normalizeFuncionario(raw, idx));
-        const fetchedAt = json.fetchedAt || json.cachedAt || new Date().toISOString();
-        const source = json.source || 'live';
-
-        setData(normalized);
-        setDataSource(source);
-        setLastUpdated(fetchedAt);
-
-        // Save into persistent local storage asynchronously
-        saveLocalCache({
-          data: normalized,
-          fetchedAt,
-          source,
-        }).catch((e) => console.warn('Erro ao salvar cache no navegador:', e));
-      } else {
-        throw new Error('Resposta vazia ou sem suporte da API');
+      if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            rawData = json.data;
+            fetchedAt = json.fetchedAt || json.cachedAt || fetchedAt;
+            source = (json.source as any) || 'live';
+          }
+        }
       }
-    } catch (err) {
-      console.warn('Erro ao atualizar dados METARH:', err);
-      if (data.length === 0) {
-        const normalizedFallback = fallbackData.map((raw, idx) => normalizeFuncionario(raw, idx));
-        setData(normalizedFallback);
-        setDataSource('fallback');
-        setLastUpdated(new Date().toISOString());
-      }
-    } finally {
-      setIsLoading(false);
-      setIsBackgroundUpdating(false);
+    } catch (e) {
+      console.warn('Endpoint /api/alocados indisponível, tentando busca direta no Google Script:', e);
     }
+
+    // 2. If endpoint failed (e.g. static host without server route), fetch DIRECTLY from Google Apps Script
+    if (!rawData) {
+      try {
+        console.log('Buscando diretamente do Google Apps Script...');
+        const res = await fetch(DIRECT_GOOGLE_SCRIPT_URL, {
+          headers: { Accept: 'application/json, text/plain, */*' },
+        });
+        if (res.ok) {
+          const text = await res.text();
+          if (text && text.trim().startsWith('[')) {
+            const parsed = JSON.parse(text);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              rawData = parsed;
+              source = 'live';
+              fetchedAt = new Date().toISOString();
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Busca direta no Google Script falhou:', e);
+      }
+    }
+
+    // 3. If direct fetch also failed (e.g. CORS restrictions), try CORS proxy fallback
+    if (!rawData) {
+      try {
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(DIRECT_GOOGLE_SCRIPT_URL)}`;
+        const res = await fetch(proxyUrl);
+        if (res.ok) {
+          const parsed = await res.json();
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            rawData = parsed;
+            source = 'live';
+            fetchedAt = new Date().toISOString();
+          }
+        }
+      } catch (e) {
+        console.warn('Busca via CORS proxy falhou:', e);
+      }
+    }
+
+    // Process rawData if obtained
+    if (rawData && rawData.length > 0) {
+      const normalized = rawData.map((raw: FuncionarioRaw, idx: number) => normalizeFuncionario(raw, idx));
+      setData(normalized);
+      setDataSource(source);
+      setLastUpdated(fetchedAt);
+
+      // Save into persistent local storage/IndexedDB asynchronously
+      saveLocalCache({
+        data: normalized,
+        fetchedAt,
+        source,
+      }).catch((e) => console.warn('Erro ao salvar cache no navegador:', e));
+    } else {
+      // 4. Last resort: if no network fetch succeeded and state is empty, restore from cache or fallbackData
+      if (data.length === 0) {
+        const cached = await getLocalCache();
+        if (cached && Array.isArray(cached.data) && cached.data.length >= 100) {
+          setData(cached.data);
+          setLastUpdated(cached.fetchedAt);
+          setDataSource('cache');
+        } else {
+          const normalizedFallback = fallbackData.map((raw, idx) => normalizeFuncionario(raw, idx));
+          setData(normalizedFallback);
+          setDataSource('fallback');
+          setLastUpdated(new Date().toISOString());
+        }
+      }
+    }
+
+    setIsLoading(false);
+    setIsBackgroundUpdating(false);
   };
 
   // Initial load: restore instantly from browser cache, then update in background
