@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Funcionario } from '../../types';
-import { formatCurrency, formatDate } from '../../utils/dataParser';
+import { formatCurrency, formatDate, parseDateDetails, isFutureAdmission } from '../../utils/dataParser';
 import { Search, ChevronLeft, ChevronRight, Eye, FileSpreadsheet, ArrowUpDown, Calendar, CalendarDays } from 'lucide-react';
 
 interface DataTableTabProps {
@@ -11,25 +11,8 @@ interface DataTableTabProps {
 
 function parseDateToTimestamp(dateStr: string | null | undefined): number {
   if (!dateStr) return 0;
-  const str = String(dateStr).trim();
-  if (!str || str === '-') return 0;
-
-  // DD/MM/YYYY
-  const parts = str.split('/');
-  if (parts.length === 3) {
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    let year = parseInt(parts[2], 10);
-    if (year < 100) year += 2000;
-    const d = new Date(year, month, day);
-    if (!isNaN(d.getTime())) return d.getTime();
-  }
-
-  // ISO string
-  const parsedIso = Date.parse(str);
-  if (!isNaN(parsedIso)) return parsedIso;
-
-  return 0;
+  const details = parseDateDetails(dateStr);
+  return details.date ? details.date.getTime() : 0;
 }
 
 export const DataTableTab: React.FC<DataTableTabProps> = ({
@@ -356,7 +339,14 @@ export const DataTableTab: React.FC<DataTableTabProps> = ({
                       {formatCurrency(worker.salario)}
                     </td>
                     <td className="p-3.5 text-center text-[#470082] font-bold">
-                      {formatDate(worker.dataAdmissao)}
+                      <div className="flex flex-col items-center justify-center">
+                        <span>{formatDate(worker.dataAdmissao)}</span>
+                        {isFutureAdmission(worker.dataAdmissao) && (
+                          <span className="mt-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300" title="Data posterior a Agosto/2026 (Mês Atual)">
+                            ⚠️ Data Futura
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3.5 text-center text-[#ff27f9] font-bold">
                       {worker.isAtivo ? '-' : formatDate(worker.dataDemissao)}

@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend
 } from 'recharts';
 import { Funcionario, DashboardMetrics } from '../../types';
-import { formatCurrency } from '../../utils/dataParser';
+import { formatCurrency, parseYearFromDate, parseDateDetails } from '../../utils/dataParser';
 import {
   Building2, Award, Users, TrendingUp, Calendar, ArrowLeft, Percent,
   Handshake, UserCheck, DollarSign, Building, ShieldCheck, Mail, Briefcase, CheckCircle2
@@ -39,16 +39,25 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
     { name: 'Desligados', value: metrics.totalDesligados, color: '#f43f5e' },
   ];
 
-  // 2. Admissions vs Dismissals by Year
-  const yearMap: { [year: number]: { ano: number; admissoes: number; demissoes: number } } = {};
+  // 2. Admissions vs Prorrogações vs Dismissals by Year
+  const yearMap: { [year: number]: { ano: number; admissoes: number; prorrogacoes: number; demissoes: number } } = {};
   data.forEach((item) => {
-    if (item.anoAdmissao) {
-      if (!yearMap[item.anoAdmissao]) yearMap[item.anoAdmissao] = { ano: item.anoAdmissao, admissoes: 0, demissoes: 0 };
-      yearMap[item.anoAdmissao].admissoes += 1;
+    const adm = parseDateDetails(item.dataAdmissao);
+    if (adm.year) {
+      if (!yearMap[adm.year]) yearMap[adm.year] = { ano: adm.year, admissoes: 0, prorrogacoes: 0, demissoes: 0 };
+      yearMap[adm.year].admissoes += 1;
     }
-    if (item.anoDemissao) {
-      if (!yearMap[item.anoDemissao]) yearMap[item.anoDemissao] = { ano: item.anoDemissao, admissoes: 0, demissoes: 0 };
-      yearMap[item.anoDemissao].demissoes += 1;
+
+    const prorr = parseDateDetails(item.dataVctoProrrogacao);
+    if (prorr.year) {
+      if (!yearMap[prorr.year]) yearMap[prorr.year] = { ano: prorr.year, admissoes: 0, prorrogacoes: 0, demissoes: 0 };
+      yearMap[prorr.year].prorrogacoes += 1;
+    }
+
+    const dem = parseDateDetails(item.dataDemissao);
+    if (dem.year) {
+      if (!yearMap[dem.year]) yearMap[dem.year] = { ano: dem.year, admissoes: 0, prorrogacoes: 0, demissoes: 0 };
+      yearMap[dem.year].demissoes += 1;
     }
   });
 
@@ -64,40 +73,27 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
       mesIndex: idx + 1,
       mesNome: m,
       admissoes: 0,
+      prorrogacoes: 0,
       demissoes: 0,
     }));
 
     data.forEach((item) => {
       // Check admission month
-      if (item.dataAdmissao && item.anoAdmissao === activeYearForMonthly) {
-        const parts = item.dataAdmissao.split('/');
-        if (parts.length >= 2) {
-          const m = parseInt(parts[1], 10);
-          if (m >= 1 && m <= 12) {
-            months[m - 1].admissoes += 1;
-          }
-        } else {
-          const d = new Date(item.dataAdmissao);
-          if (!isNaN(d.getTime())) {
-            months[d.getMonth()].admissoes += 1;
-          }
-        }
+      const adm = parseDateDetails(item.dataAdmissao);
+      if (adm.year === activeYearForMonthly && adm.month) {
+        months[adm.month - 1].admissoes += 1;
+      }
+
+      // Check prorrogação month
+      const prorr = parseDateDetails(item.dataVctoProrrogacao);
+      if (prorr.year === activeYearForMonthly && prorr.month) {
+        months[prorr.month - 1].prorrogacoes += 1;
       }
 
       // Check dismissal month
-      if (item.dataDemissao && item.anoDemissao === activeYearForMonthly) {
-        const parts = item.dataDemissao.split('/');
-        if (parts.length >= 2) {
-          const m = parseInt(parts[1], 10);
-          if (m >= 1 && m <= 12) {
-            months[m - 1].demissoes += 1;
-          }
-        } else {
-          const d = new Date(item.dataDemissao);
-          if (!isNaN(d.getTime())) {
-            months[d.getMonth()].demissoes += 1;
-          }
-        }
+      const dem = parseDateDetails(item.dataDemissao);
+      if (dem.year === activeYearForMonthly && dem.month) {
+        months[dem.month - 1].demissoes += 1;
       }
     });
 
@@ -242,11 +238,11 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                   <TrendingUp className="w-4 h-4 text-[#470082]" />
                   {activeYearForMonthly
                     ? `Evolução Mês a Mês (${activeYearForMonthly})`
-                    : 'Evolução de Contratações vs Desligamentos'}
+                    : 'Evolução de Admissões, Prorrogações e Desligamentos'}
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   {activeYearForMonthly
-                    ? `Detalhamento mensal de admissões e desligamentos em ${activeYearForMonthly}`
+                    ? `Detalhamento mensal de admissões, prorrogações e desligamentos em ${activeYearForMonthly}`
                     : 'Clique em um ano no gráfico ou selecione abaixo para ver o detalhamento mês a mês'}
                 </p>
               </div>
@@ -264,6 +260,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
 
                 <div className="flex items-center gap-3 text-xs font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
                   <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#0284c7]" /> Admissões</div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" /> Prorrogações</div>
                   <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#ef4444]" /> Demissões</div>
                 </div>
               </div>
@@ -280,16 +277,18 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                     <YAxis stroke="#64748b" tick={{ fontSize: 11 }} />
                     <Tooltip
                       formatter={(val: any, name: any) => {
-                        const isAdm = name === 'admissoes' || name === 'Admissões';
+                        let label = 'Admissões';
+                        if (name === 'prorrogacoes' || name === 'Prorrogações') label = 'Prorrogações';
+                        else if (name === 'demissoes' || name === 'Demissões') label = 'Demissões';
                         return [
                           Number(val).toLocaleString('pt-BR') + ' pessoas',
-                          isAdm ? 'Admissões' : 'Demissões'
+                          label
                         ];
                       }}
                       contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                     />
-                    {/* High contrast: Admissões = #0284c7 (Vibrant Blue), Demissões = #ef4444 (Vibrant Red) */}
                     <Bar dataKey="admissoes" name="Admissões" fill="#0284c7" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="prorrogacoes" name="Prorrogações" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="demissoes" name="Demissões" fill="#ef4444" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 ) : (
@@ -309,16 +308,18 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                     <YAxis stroke="#64748b" tick={{ fontSize: 11 }} />
                     <Tooltip
                       formatter={(val: any, name: any) => {
-                        const isAdm = name === 'admissoes' || name === 'Admissões';
+                        let label = 'Admissões';
+                        if (name === 'prorrogacoes' || name === 'Prorrogações') label = 'Prorrogações';
+                        else if (name === 'demissoes' || name === 'Demissões') label = 'Demissões';
                         return [
                           Number(val).toLocaleString('pt-BR') + ' pessoas',
-                          isAdm ? 'Admissões' : 'Demissões'
+                          label
                         ];
                       }}
                       contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                     />
-                    {/* High contrast: Admissões = #0284c7 (Vibrant Blue), Demissões = #ef4444 (Vibrant Red) */}
                     <Bar dataKey="admissoes" name="Admissões" fill="#0284c7" radius={[4, 4, 0, 0]} className="cursor-pointer" />
+                    <Bar dataKey="prorrogacoes" name="Prorrogações" fill="#f59e0b" radius={[4, 4, 0, 0]} className="cursor-pointer" />
                     <Bar dataKey="demissoes" name="Demissões" fill="#ef4444" radius={[4, 4, 0, 0]} className="cursor-pointer" />
                   </BarChart>
                 )}

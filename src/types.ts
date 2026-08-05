@@ -48,6 +48,7 @@ export interface Funcionario {
   anoAdmissao: number | null;
   dataVctoContrato: string;
   dataVctoProrrogacao: string;
+  anoProrrogacao?: number | null;
   dataDemissao: string | null;
   anoDemissao: number | null;
   isAtivo: boolean;

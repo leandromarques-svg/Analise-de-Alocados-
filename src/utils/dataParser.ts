@@ -137,50 +137,117 @@ export function safeStr(val: any): string {
   return String(val).trim();
 }
 
-export function parseYearFromDate(dateStr: any): number | null {
-  if (dateStr === null || dateStr === undefined) return null;
+export interface ParsedDateDetails {
+  year: number | null;
+  month: number | null; // 1-12
+  day: number | null;   // 1-31
+  date: Date | null;
+}
+
+export function parseDateDetails(dateStr: any): ParsedDateDetails {
+  if (dateStr === null || dateStr === undefined) {
+    return { year: null, month: null, day: null, date: null };
+  }
   const str = String(dateStr).trim();
-  if (!str) return null;
-  
-  // Check ISO format 2023-12-11T08:00:00.000Z
-  const isoMatch = str.match(/^(\d{4})-\d{2}-\d{2}/);
+  if (!str || str === '-') {
+    return { year: null, month: null, day: null, date: null };
+  }
+
+  // 1. Check ISO format YYYY-MM-DD...
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) {
-    return parseInt(isoMatch[1], 10);
+    const year = parseInt(isoMatch[1], 10);
+    const month = parseInt(isoMatch[2], 10);
+    const day = parseInt(isoMatch[3], 10);
+    if (year > 1900 && year < 2100 && month >= 1 && month <= 12) {
+      return { year, month, day, date: new Date(year, month - 1, day) };
+    }
   }
 
-  // Check M/D/YYYY or D/M/YYYY or YYYY-MM-DD
-  const slashParts = str.split('/');
-  if (slashParts.length === 3) {
-    const yearStr = slashParts[2].split('T')[0].split(' ')[0];
-    const yr = parseInt(yearStr, 10);
-    if (!isNaN(yr) && yr > 1900 && yr < 2100) return yr;
+  // 2. Slash/Dash formats (DD/MM/YYYY, M/D/YYYY, YYYY/MM/DD)
+  const parts = str.split(/[\/\-]/);
+  if (parts.length === 3) {
+    const p0 = parseInt(parts[0].trim(), 10);
+    const p1 = parseInt(parts[1].trim(), 10);
+    const p2Str = parts[2].trim().split('T')[0].split(' ')[0];
+    const p2 = parseInt(p2Str, 10);
+
+    // Case A: p2 is 4-digit year (e.g. MM/DD/YYYY)
+    if (!isNaN(p2) && p2 >= 1900 && p2 <= 2100) {
+      const year = p2;
+      let month: number | null = null;
+      let day: number | null = null;
+
+      if (!isNaN(p0) && !isNaN(p1)) {
+        if (p0 <= 12 && p0 >= 1 && p1 <= 31 && p1 >= 1) {
+          // Strictly MM/DD/YYYY format (p0 = Month, p1 = Day)
+          month = p0;
+          day = p1;
+        } else if (p0 > 12 && p0 <= 31 && p1 <= 12 && p1 >= 1) {
+          // Fallback DD/MM/YYYY format if p0 is a day > 12
+          day = p0;
+          month = p1;
+        }
+      }
+
+      if (month !== null && month >= 1 && month <= 12) {
+        const validDay = day && day >= 1 && day <= 31 ? day : 1;
+        return {
+          year,
+          month,
+          day: validDay,
+          date: new Date(year, month - 1, validDay),
+        };
+      }
+    }
+
+    // Case B: p0 is 4-digit year (e.g. 2024/05/15)
+    if (!isNaN(p0) && p0 >= 1900 && p0 <= 2100) {
+      const year = p0;
+      const month = p1 >= 1 && p1 <= 12 ? p1 : null;
+      const day = p2 >= 1 && p2 <= 31 ? p2 : 1;
+      if (month !== null) {
+        return { year, month, day, date: new Date(year, month - 1, day) };
+      }
+    }
   }
 
-  const parsed = new Date(str);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.getFullYear();
+  // 3. Fallback to JS Date
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    return {
+      year: d.getFullYear(),
+      month: d.getMonth() + 1,
+      day: d.getDate(),
+      date: d,
+    };
   }
 
-  return null;
+  return { year: null, month: null, day: null, date: null };
+}
+
+export function parseYearFromDate(dateStr: any): number | null {
+  return parseDateDetails(dateStr).year;
+}
+
+export function isFutureAdmission(dateStr: any, currentYear = 2026, currentMonth = 8): boolean {
+  const details = parseDateDetails(dateStr);
+  if (!details.year || !details.month) return false;
+  if (details.year > currentYear) return true;
+  if (details.year === currentYear && details.month > currentMonth) return true;
+  return false;
 }
 
 export function formatDate(dateStr: any): string {
   if (dateStr === null || dateStr === undefined) return '-';
-  const str = String(dateStr).trim();
-  if (!str) return '-';
-  
-  try {
-    const d = new Date(str);
-    if (!isNaN(d.getTime())) {
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const year = d.getFullYear();
-      return `${day}/${month}/${year}`;
-    }
-  } catch (e) {
-    // ignore
+  const details = parseDateDetails(dateStr);
+  if (details.day && details.month && details.year) {
+    const dd = String(details.day).padStart(2, '0');
+    const mm = String(details.month).padStart(2, '0');
+    return `${dd}/${mm}/${details.year}`;
   }
-  return str;
+  const str = String(dateStr).trim();
+  return str || '-';
 }
 
 export function parseNumber(val: any): number {
@@ -236,6 +303,7 @@ export function normalizeFuncionario(raw: FuncionarioRaw | any, idx: number): Fu
     anoAdmissao: parseYearFromDate(raw['Data Admissão']),
     dataVctoContrato: safeStr(raw['Data Vcto Contrato']),
     dataVctoProrrogacao: safeStr(raw['Data Vcto Prorrogação']),
+    anoProrrogacao: parseYearFromDate(raw['Data Vcto Prorrogação']),
     dataDemissao: hasDemissao ? safeStr(dataDemissaoRaw) : null,
     anoDemissao: hasDemissao ? parseYearFromDate(dataDemissaoRaw) : null,
     isAtivo: !hasDemissao,

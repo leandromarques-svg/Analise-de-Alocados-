@@ -3,6 +3,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { Funcionario } from '../../types';
+import { parseDateDetails } from '../../utils/dataParser';
 import { Calendar, TrendingUp, UserX, ArrowLeft } from 'lucide-react';
 
 interface TemporalTabProps {
@@ -28,13 +29,15 @@ export const TemporalTab: React.FC<TemporalTabProps> = ({
   // 1. Annual mapping
   const yearMap: { [year: number]: { ano: number; admissoes: number; demissoes: number; saldo: number } } = {};
   data.forEach((item) => {
-    if (item.anoAdmissao) {
-      if (!yearMap[item.anoAdmissao]) yearMap[item.anoAdmissao] = { ano: item.anoAdmissao, admissoes: 0, demissoes: 0, saldo: 0 };
-      yearMap[item.anoAdmissao].admissoes += 1;
+    const adm = parseDateDetails(item.dataAdmissao);
+    if (adm.year) {
+      if (!yearMap[adm.year]) yearMap[adm.year] = { ano: adm.year, admissoes: 0, demissoes: 0, saldo: 0 };
+      yearMap[adm.year].admissoes += 1;
     }
-    if (item.anoDemissao) {
-      if (!yearMap[item.anoDemissao]) yearMap[item.anoDemissao] = { ano: item.anoDemissao, admissoes: 0, demissoes: 0, saldo: 0 };
-      yearMap[item.anoDemissao].demissoes += 1;
+    const dem = parseDateDetails(item.dataDemissao);
+    if (dem.year) {
+      if (!yearMap[dem.year]) yearMap[dem.year] = { ano: dem.year, admissoes: 0, demissoes: 0, saldo: 0 };
+      yearMap[dem.year].demissoes += 1;
     }
   });
 
@@ -66,27 +69,15 @@ export const TemporalTab: React.FC<TemporalTabProps> = ({
 
     data.forEach((item) => {
       // Admissions in active year
-      if (item.dataAdmissao && item.anoAdmissao === activeYear) {
-        const parts = item.dataAdmissao.split('/');
-        if (parts.length >= 2) {
-          const m = parseInt(parts[1], 10);
-          if (m >= 1 && m <= 12) months[m - 1].admissoes += 1;
-        } else {
-          const d = new Date(item.dataAdmissao);
-          if (!isNaN(d.getTime())) months[d.getMonth()].admissoes += 1;
-        }
+      const adm = parseDateDetails(item.dataAdmissao);
+      if (adm.year === activeYear && adm.month) {
+        months[adm.month - 1].admissoes += 1;
       }
 
       // Dismissals in active year
-      if (item.dataDemissao && item.anoDemissao === activeYear) {
-        const parts = item.dataDemissao.split('/');
-        if (parts.length >= 2) {
-          const m = parseInt(parts[1], 10);
-          if (m >= 1 && m <= 12) months[m - 1].demissoes += 1;
-        } else {
-          const d = new Date(item.dataDemissao);
-          if (!isNaN(d.getTime())) months[d.getMonth()].demissoes += 1;
-        }
+      const dem = parseDateDetails(item.dataDemissao);
+      if (dem.year === activeYear && dem.month) {
+        months[dem.month - 1].demissoes += 1;
       }
     });
 
