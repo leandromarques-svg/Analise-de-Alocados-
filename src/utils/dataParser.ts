@@ -80,7 +80,7 @@ export const RAW_UF_TO_CODE: { [raw: string]: string } = {
 
 export function parseUFCode(rawUfInput: string): string {
   if (!rawUfInput) return 'SP';
-  let str = rawUfInput.trim();
+  let str = String(rawUfInput).trim();
   if (str.toUpperCase().startsWith('ESTADO ')) {
     str = str.substring(7).trim();
   }
@@ -89,8 +89,8 @@ export function parseUFCode(rawUfInput: string): string {
   if (BRAZIL_UFS[upper]) return upper;
   if (RAW_UF_TO_CODE[upper]) return RAW_UF_TO_CODE[upper];
 
-  // Check suffix like /SP, - SP, /MG, - MG, /DF
-  const suffixMatch = str.match(/[\/\-\s](AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/i);
+  // Check suffix like /SP, - SP, /MG, - MG, /DF, (SP), , SP, or trailing " SP"
+  const suffixMatch = str.match(/[\/\-\s,\(](AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)[\)]?$/i);
   if (suffixMatch) {
     return suffixMatch[1].toUpperCase();
   }
@@ -120,8 +120,8 @@ export function parseUFCode(rawUfInput: string): string {
   if (upper.includes('TOCANTINS')) return 'TO';
   if (upper.includes('RORAIMA')) return 'RR';
 
-  if (upper.length === 2) return upper;
-  return upper.substring(0, 2);
+  if (upper.length === 2 && BRAZIL_UFS[upper]) return upper;
+  return 'SP';
 }
 
 export function getUFName(ufCode: string): string {
@@ -267,30 +267,122 @@ export function formatCurrency(value: number): string {
   }).format(value || 0);
 }
 
+export function parseRegionalInfo(raw: any): { cidade: string; uf: string; regiao: string } {
+  let candidateStr =
+    safeStr(raw['Descrição de Região']) ||
+    safeStr(raw['Descrição de Regiao']) ||
+    safeStr(raw['Descrição Região']) ||
+    safeStr(raw['Descrição Regiao']) ||
+    safeStr(raw['Descricao de Regiao']) ||
+    safeStr(raw['Descricao Regiao']) ||
+    safeStr(raw['Descrição da Região']) ||
+    safeStr(raw['Descrição da Regiao']) ||
+    safeStr(raw['Descrição do Local']) ||
+    safeStr(raw['Descrição Localidade']) ||
+    safeStr(raw['e ']) ||
+    safeStr(raw['e']) ||
+    safeStr(raw['Cidade - UF']) ||
+    safeStr(raw['Cidade / UF']) ||
+    safeStr(raw['Cidade-UF']) ||
+    safeStr(raw['Descrição']) ||
+    safeStr(raw['Descricao']) ||
+    safeStr(raw['Regional']) ||
+    safeStr(raw['Localidade']) ||
+    safeStr(raw['regiao']);
+
+  // If candidate is empty or pure numeric (like "276" from numeric region column M), inspect keys of raw dynamically
+  if (!candidateStr || /^\d+$/.test(candidateStr.trim())) {
+    const keys = Object.keys(raw || {});
+    for (const k of keys) {
+      const lower = k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (
+        (lower.includes('descri') && lower.includes('regi')) ||
+        (lower.includes('descri') && lower.includes('local')) ||
+        lower === 'e' ||
+        lower === 'e '
+      ) {
+        const val = safeStr(raw[k]);
+        if (val && !/^\d+$/.test(val.trim())) {
+          candidateStr = val;
+          break;
+        }
+      }
+    }
+  }
+
+  // Fallback to Região / Regiao if non-numeric
+  if (!candidateStr || /^\d+$/.test(candidateStr.trim())) {
+    const valReg = safeStr(raw['Região']) || safeStr(raw['Regiao']) || safeStr(raw['REGIAO']);
+    if (valReg && !/^\d+$/.test(valReg.trim())) {
+      candidateStr = valReg;
+    }
+  }
+
+  const rawCidade = safeStr(raw['Cidade']) || safeStr(raw['CIDADE']) || safeStr(raw['Municipio']) || safeStr(raw['Município']) || safeStr(raw['cidade']);
+  const rawUf = safeStr(raw['UF']) || safeStr(raw['Uf']) || safeStr(raw['Estado']) || safeStr(raw['ESTADO']) || safeStr(raw['uf']);
+
+  let foundStr = candidateStr.trim();
+  if (/^\d+$/.test(foundStr)) {
+    foundStr = '';
+  }
+
+  let cidade = '';
+  let uf = 'SP';
+
+  if (foundStr && foundStr !== '-' && foundStr !== 'Outros - SP') {
+    uf = parseUFCode(foundStr);
+
+    // Extract clean city name by removing state code or suffix (e.g. "ARARAQUARA SP", "ARARAS - SP", "ARATU - BA", "CAMPINAS / SP")
+    let cleanCity = foundStr
+      .replace(/[\s\-\/\,]+(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)[\)]?$/i, '')
+      .trim();
+    cleanCity = cleanCity.replace(/[\-\/]$/, '').trim();
+
+    if (cleanCity && !/^\d+$/.test(cleanCity)) {
+      cidade = cleanCity;
+    }
+  }
+
+  if (!cidade && rawCidade && rawCidade !== 'Não informada') {
+    cidade = rawCidade;
+  }
+
+  if (!uf || uf === 'SP') {
+    if (rawUf) {
+      uf = parseUFCode(rawUf);
+    }
+  }
+
+  if (!cidade || cidade === 'Não informada' || cidade === 'Outros') {
+    cidade = BRAZIL_UFS[uf] || 'São Paulo';
+  }
+
+  const regiao = `${cidade} - ${uf}`;
+  return { cidade, uf, regiao };
+}
+
 export function normalizeFuncionario(raw: FuncionarioRaw | any, idx: number): Funcionario {
   if (raw && typeof raw.id !== 'undefined' && typeof raw.isAtivo !== 'undefined' && typeof raw.grupoEconomico !== 'undefined') {
+    const f = raw as Funcionario;
+    const info = parseRegionalInfo(f);
+    const uf = f.uf && f.uf !== 'SP' ? parseUFCode(f.uf) : info.uf;
+    const cidade = f.cidade && f.cidade !== 'Não informada' && f.cidade !== 'Outros' ? f.cidade : info.cidade;
+    let regiao = f.regiao && f.regiao !== 'Outros - SP' ? f.regiao : info.regiao;
+    if (regiao === 'Outros - SP' && cidade !== 'Não informada') {
+      regiao = `${cidade} - ${uf}`;
+    }
     return {
-      ...(raw as Funcionario),
-      uf: parseUFCode((raw as Funcionario).uf),
+      ...f,
+      uf,
+      cidade,
+      regiao,
     };
   }
 
   const dataDemissaoRaw = raw['Data Demissão'];
   const hasDemissao = Boolean(dataDemissaoRaw && String(dataDemissaoRaw).trim() !== '');
-  
-  const regiaoRaw = safeStr(raw['e ']);
-  let cidade = 'Não informada';
-  let uf = 'SP';
-  if (regiaoRaw) {
-    const parts = regiaoRaw.split(' - ');
-    if (parts.length >= 2) {
-      cidade = parts[0].trim();
-      uf = parseUFCode(parts[1].trim());
-    } else {
-      cidade = regiaoRaw;
-      uf = parseUFCode(regiaoRaw);
-    }
-  }
+
+  const regInfo = parseRegionalInfo(raw);
 
   const salario = parseNumber(raw['Salário Base']);
 
@@ -311,9 +403,9 @@ export function normalizeFuncionario(raw: FuncionarioRaw | any, idx: number): Fu
     cargo: safeStr(raw['Cargo ou Função']) || 'Não especificado',
     depto: safeStr(raw['Depto/Centro de Custo']) || safeStr(raw['Departamento']) || '-',
     empresa: safeStr(raw['Empresa']) || 'METARH',
-    regiao: regiaoRaw || 'Outros - SP',
-    cidade,
-    uf,
+    regiao: regInfo.regiao,
+    cidade: regInfo.cidade,
+    uf: regInfo.uf,
     motivoDesligamento: safeStr(raw['Motivo do Desligamento']) || (hasDemissao ? 'Demissão' : '-'),
     emailCorporativo: safeStr(raw['E-mail Corporativo']),
     celular: safeStr(raw['Celular(envio SMS)']),
