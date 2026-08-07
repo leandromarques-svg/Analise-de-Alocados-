@@ -28,6 +28,7 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
+  Clock,
   Save,
   Loader2,
 } from 'lucide-react';
@@ -47,7 +48,7 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
   onSelectWorker,
   onUpdateCurrentUser,
 }) => {
-  const [selectedPeriodMonths, setSelectedPeriodMonths] = useState<number>(3);
+  const selectedPeriodMonths = 1; // Always compare Current Month vs Previous Month
   const [searchTerm, setSearchTerm] = useState('');
   const [grupoSearchTerm, setGrupoSearchTerm] = useState('');
   const [activeSelectionTab, setActiveSelectionTab] = useState<'grupos' | 'clientes'>('grupos');
@@ -306,31 +307,14 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
               )}
             </h1>
             <p className="text-xs sm:text-sm text-purple-200/90 max-w-2xl leading-relaxed">
-              Monitore a atividade e evolução das suas contas, selecione por Grupo Econômico ou Empresas Individuais, identifique clientes sem novas solicitações nos últimos meses e ative planos de ação.
+              Monitore a atividade e evolução das suas contas, selecione por Grupo Econômico ou Empresas Individuais, identifique clientes sem novas solicitações no mês e ative planos de ação.
             </p>
           </div>
 
-          {/* Timeframe Filter Switcher */}
-          <div className="bg-white/10 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 flex flex-wrap items-center gap-1">
-            {[
-              { label: 'Mês Anterior', months: 1 },
-              { label: '3 Meses', months: 3 },
-              { label: '6 Meses', months: 6 },
-              { label: '9 Meses', months: 9 },
-              { label: '1 Ano', months: 12 },
-            ].map((item) => (
-              <button
-                key={item.months}
-                onClick={() => setSelectedPeriodMonths(item.months)}
-                className={`px-3 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  selectedPeriodMonths === item.months
-                    ? 'bg-white text-[#401669] shadow-lg font-black scale-105'
-                    : 'text-purple-200 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+          {/* Timeframe Indicator Badge (Fixed Mês Atual vs Mês Anterior) */}
+          <div className="bg-white/10 px-4 py-2.5 rounded-2xl backdrop-blur-md border border-white/10 flex items-center gap-2 text-xs font-black text-white flex-shrink-0 shadow-sm">
+            <Clock className="w-4 h-4 text-amber-300" />
+            <span>Comparativo: Mês Atual vs Mês Anterior</span>
           </div>
         </div>
 
@@ -657,13 +641,13 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Ticket Médio Salarial
+              Ticket Médio Salarial (Atual)
             </span>
             <div className="text-xl font-black text-slate-900">
               R$ {analytics.averageTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-[11px] font-semibold text-purple-700">
-              Média salarial da carteira
+              Média salarial atual da carteira
             </p>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-purple-100 text-[#401669] flex items-center justify-center flex-shrink-0">
@@ -675,13 +659,13 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Folha Salarial Total
+              Folha Salarial Total (Atual)
             </span>
             <div className="text-xl font-black text-slate-900">
               R$ {analytics.totalMonthlyFolha.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
             <p className="text-[11px] font-semibold text-emerald-700">
-              {analytics.activeWorkersCount} profissionais ativos
+              {analytics.activeWorkersCount} profissionais ativos no mês
             </p>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center flex-shrink-0">
@@ -693,7 +677,7 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Novas Alocações ({selectedPeriodMonths}M)
+              Novas Alocações (Mês Atual)
             </span>
             <div className="text-xl font-black text-slate-900">
               {analytics.currentPeriodAdmissions} Alocações
@@ -703,7 +687,7 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
                 ? 'text-emerald-700'
                 : 'text-amber-700'
             }`}>
-              Vs {analytics.previousPeriodAdmissions} no período anterior
+              Vs {analytics.previousPeriodAdmissions} no mês anterior
             </p>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center flex-shrink-0">
@@ -715,13 +699,13 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Sem Novos Ativos ({selectedPeriodMonths}M)
+              Sem Novos Ativos (Mês Atual)
             </span>
             <div className="text-xl font-black text-rose-600">
               {analytics.clientsWithoutNewActiveInPeriod.length} Clientes
             </div>
             <p className="text-[11px] font-semibold text-rose-700">
-              Requerem contato comercial
+              Sem novos alocados neste mês
             </p>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center flex-shrink-0">

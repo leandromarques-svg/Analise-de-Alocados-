@@ -486,45 +486,58 @@ export default function App() {
             </span>
           </div>
         ) : (
-          <div className="space-y-2 mb-6">
-            {/* Main Analytics Bar (Análise Geral + Role Tabs) */}
+          <div className="space-y-3 mb-6">
+            {/* Dedicated Commercial Modules Bar */}
+            {(currentUser?.role === 'Comercial' ||
+              currentUser?.role === 'Gerencial Comercial' ||
+              currentUser?.role === 'Administrador') && (
+              <div className="p-2 bg-gradient-to-r from-[#2c0d4a] via-[#401669] to-[#250a40] rounded-2xl border border-purple-900/50 shadow-sm flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2 overflow-x-auto no-scrollbar">
+                  <span className="text-[10px] uppercase tracking-wider font-extrabold text-purple-200 px-3 py-1.5 bg-white/10 rounded-xl flex-shrink-0 border border-white/10">
+                    Módulos Comerciais:
+                  </span>
+
+                  {/* Dedicated Commercial Head Tab */}
+                  {(currentUser?.role === 'Gerencial Comercial' || currentUser?.role === 'Administrador') && (
+                    <button
+                      onClick={() => setActiveTab('comercial_gestao')}
+                      className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                        activeTab === 'comercial_gestao'
+                          ? 'bg-white text-[#2c0d4a] shadow-lg font-black ring-2 ring-purple-300 scale-102'
+                          : 'bg-white/10 text-purple-100 hover:bg-white/20'
+                      }`}
+                    >
+                      <Users className="w-4 h-4 text-purple-300" />
+                      Gestão Equipe Comercial
+                    </button>
+                  )}
+
+                  {/* Dedicated Commercial Rep Portfolio Tab */}
+                  <button
+                    onClick={() => setActiveTab('comercial_carteira')}
+                    className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                      activeTab === 'comercial_carteira'
+                        ? 'bg-white text-[#2c0d4a] shadow-lg font-black ring-2 ring-purple-300 scale-102'
+                        : 'bg-white/10 text-purple-100 hover:bg-white/20'
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4 text-amber-300" />
+                    Análise da Carteira Comercial
+                  </button>
+                </div>
+
+                <div className="text-[11px] font-semibold text-purple-200/80 hidden lg:block pr-2">
+                  Estudos estratégicos de executivos &amp; contas
+                </div>
+              </div>
+            )}
+
+            {/* Main Analytics Bar (Análise Geral) */}
             <div className="flex flex-wrap sm:flex-nowrap overflow-x-auto gap-1.5 p-1.5 bg-slate-200/70 rounded-2xl border border-slate-200/80 no-scrollbar items-center justify-between">
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                 <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-500 px-3 py-1 bg-slate-300/60 rounded-xl flex-shrink-0">
                   Visão &amp; Módulos:
                 </span>
-
-                {/* Dedicated Commercial Head Tab */}
-                {(currentUser?.role === 'Gerencial Comercial' || currentUser?.role === 'Administrador') && (
-                  <button
-                    onClick={() => setActiveTab('comercial_gestao')}
-                    className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                      activeTab === 'comercial_gestao'
-                        ? 'bg-indigo-900 text-white shadow-md font-extrabold ring-2 ring-indigo-400'
-                        : 'bg-indigo-100/90 text-indigo-900 hover:bg-indigo-200'
-                    }`}
-                  >
-                    <Users className="w-4 h-4 text-indigo-700" />
-                    Gestão Equipe Comercial
-                  </button>
-                )}
-
-                {/* Dedicated Commercial Rep Portfolio Tab */}
-                {(currentUser?.role === 'Comercial' ||
-                  currentUser?.role === 'Gerencial Comercial' ||
-                  currentUser?.role === 'Administrador') && (
-                  <button
-                    onClick={() => setActiveTab('comercial_carteira')}
-                    className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                      activeTab === 'comercial_carteira'
-                        ? 'bg-amber-800 text-white shadow-md font-extrabold ring-2 ring-amber-400'
-                        : 'bg-amber-100/90 text-amber-900 hover:bg-amber-200'
-                    }`}
-                  >
-                    <BarChart3 className="w-4 h-4 text-amber-700" />
-                    Análise da Carteira Comercial
-                  </button>
-                )}
 
                 <button
                   onClick={() => setActiveTab('overview')}
