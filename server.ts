@@ -108,42 +108,151 @@ if (!cachedData || cachedData.length === 0) {
 app.use(express.json({ limit: '100mb' }));
 
 const APPS_SCRIPT_USER_URL = 'https://script.google.com/macros/s/AKfycbxvEbfCjw5prUCltIj5KWGzilUXsp-tu4fIA_ZYvr5WWJ0k4OoJL7SLOP1ZrnSCejV8/exec';
+const USERS_DB_PATH = path.join(process.cwd(), 'metarh_users_db.json');
 
-// API Route to handle users (proxy to Google Apps Script)
+let serverUsers: any[] = [];
+
+function loadServerUsers() {
+  try {
+    if (fs.existsSync(USERS_DB_PATH)) {
+      const raw = fs.readFileSync(USERS_DB_PATH, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        serverUsers = parsed;
+        console.log(`[METARH Users DB] Loaded ${serverUsers.length} users from server disk.`);
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('[METARH Users DB] Error loading users file:', err);
+  }
+
+  // Initial Master Admin Leandro
+  serverUsers = [
+    {
+      id: 'admin_leandro',
+      username: 'Leandro',
+      password: '@Pi#101412',
+      role: 'Administrador',
+      createdAt: new Date().toISOString(),
+      logs: [
+        {
+          id: '1',
+          timestamp: new Date().toISOString(),
+          author: 'Sistema',
+          action: 'Criação de Conta',
+          details: 'Conta Master Administrador ativada.',
+        },
+      ],
+    },
+  ];
+  saveServerUsers();
+}
+
+function saveServerUsers() {
+  try {
+    fs.writeFileSync(USERS_DB_PATH, JSON.stringify(serverUsers, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[METARH Users DB] Error writing users file:', err);
+  }
+}
+
+loadServerUsers();
+
+async function triggerGoogleScriptUserSync(query: any, body: any) {
+  try {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(query || {})) {
+      params.append(k, String(v));
+    }
+    if (body && typeof body === 'object') {
+      for (const [k, v] of Object.entries(body)) {
+        if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+          params.append(k, String(v));
+        }
+      }
+    }
+    const targetUrl = `${APPS_SCRIPT_USER_URL}?${params.toString()}`;
+    await fetch(targetUrl, {
+      method: 'GET',
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(5000),
+    }).catch(() => {});
+  } catch (e) {
+    // ignore background sync errors
+  }
+}
+
+// API Route to handle users with server-side JSON persistence
 app.all('/api/users', async (req, res) => {
   try {
     const action = (req.query.action || req.body?.action || 'getUsers').toString();
-    const params = new URLSearchParams();
-    
-    // Copy query params
-    for (const [k, v] of Object.entries(req.query)) {
-      params.append(k, String(v));
-    }
 
-    if (req.method === 'POST' && req.body) {
-      for (const [k, v] of Object.entries(req.body)) {
-        params.append(k, String(v));
+    if (action === 'saveUser' || req.body?.user) {
+      const userData = req.body?.user || req.body;
+      if (userData && userData.username) {
+        const unameLower = String(userData.username).trim().toLowerCase();
+        const existingIdx = serverUsers.findIndex(
+          (u) => String(u.username).trim().toLowerCase() === unameLower
+        );
+
+        if (existingIdx >= 0) {
+          serverUsers[existingIdx] = {
+            ...serverUsers[existingIdx],
+            ...userData,
+            updatedAt: new Date().toISOString(),
+          };
+        } else {
+          serverUsers.push({
+            ...userData,
+            id: userData.id || String(Date.now()),
+            createdAt: userData.createdAt || new Date().toISOString(),
+          });
+        }
+        saveServerUsers();
+        console.log(`[METARH Users DB] Saved user '${userData.username}' to server database.`);
+
+        // Asynchronously sync to Google Apps Script as fallback
+        triggerGoogleScriptUserSync(req.query, req.body);
+
+        return res.json({ success: true, user: userData, users: serverUsers });
       }
     }
 
-    const targetUrl = `${APPS_SCRIPT_USER_URL}?${params.toString()}`;
-    const response = await fetch(targetUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'Accept': 'application/json, text/plain, */*'
-      },
-    });
+    if (action === 'deleteUser') {
+      const usernameToDelete = (req.query.username || req.body?.username || '').toString().trim().toLowerCase();
+      if (usernameToDelete) {
+        serverUsers = serverUsers.filter(
+          (u) => String(u.username).trim().toLowerCase() !== usernameToDelete
+        );
+        saveServerUsers();
+        console.log(`[METARH Users DB] Deleted user '${usernameToDelete}' from server database.`);
 
-    if (!response.ok) {
-      return res.status(response.status).json({ success: false, error: 'Erro ao conectar ao Google Script' });
+        // Asynchronously sync to Google Apps Script as fallback
+        triggerGoogleScriptUserSync(req.query, req.body);
+
+        return res.json({ success: true, users: serverUsers });
+      }
     }
 
-    const data = await response.json();
-    return res.json(data);
+    // Default action: getUsers
+    // Ensure Leandro exists
+    const hasLeandro = serverUsers.some((u) => String(u.username).toLowerCase() === 'leandro');
+    if (!hasLeandro) {
+      serverUsers.unshift({
+        id: 'admin_leandro',
+        username: 'Leandro',
+        password: '@Pi#101412',
+        role: 'Administrador',
+        createdAt: new Date().toISOString(),
+      });
+      saveServerUsers();
+    }
+
+    return res.json({ success: true, data: serverUsers, users: serverUsers });
   } catch (err: any) {
-    console.error('Error in /api/users proxy:', err);
-    return res.status(500).json({ success: false, error: err.message });
+    console.error('Error in /api/users handler:', err);
+    return res.status(500).json({ success: false, error: err.message, users: serverUsers });
   }
 });
 

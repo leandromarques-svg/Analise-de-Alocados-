@@ -102,36 +102,38 @@ const parseArrayField = (val: any): string[] => {
 
 export const getUsers = async (): Promise<User[]> => {
   const deletedUsers = getDeletedUsers();
-  const localUsers = getLocalUsers();
 
   try {
     let remoteData: any = null;
 
-    // 1. Try local or Vercel serverless API endpoint first (/api/users)
+    // 1. Try server endpoint (/api/users)
     try {
       const apiRes = await fetch(`/api/users?action=getUsers&t=${Date.now()}`);
       if (apiRes.ok) {
-        const contentType = apiRes.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const json = await apiRes.json();
-          if (Array.isArray(json)) {
-            remoteData = json;
-          } else if (json && Array.isArray(json.data)) {
-            remoteData = json.data;
-          }
+        const json = await apiRes.json();
+        if (json && Array.isArray(json.users)) {
+          remoteData = json.users;
+        } else if (json && Array.isArray(json.data)) {
+          remoteData = json.data;
+        } else if (Array.isArray(json)) {
+          remoteData = json;
         }
       }
     } catch (e) {
-      // ignore endpoint failure, fallback to direct fetch
+      console.warn('Server endpoint /api/users failed:', e);
     }
 
-    // 2. Fallback to direct Google Apps Script URL
-    if (!remoteData) {
-      const res = await fetch(`${APPS_SCRIPT_USER_URL}?action=getUsers&t=${Date.now()}`, {
-        method: 'GET',
-      });
-      if (res.ok) {
-        remoteData = await res.json();
+    // 2. Fallback to direct Google Apps Script URL if server had no records
+    if (!remoteData || remoteData.length === 0) {
+      try {
+        const res = await fetch(`${APPS_SCRIPT_USER_URL}?action=getUsers&t=${Date.now()}`, {
+          method: 'GET',
+        });
+        if (res.ok) {
+          remoteData = await res.json();
+        }
+      } catch (e) {
+        // ignore
       }
     }
 
@@ -167,6 +169,7 @@ export const getUsers = async (): Promise<User[]> => {
             gruposEconomicos: grupos.length > 0 ? grupos : u.grupoEconomico ? [u.grupoEconomico] : [],
             clientesAtribuidos: clientes,
             cnpjsAtribuidos: cnpjs,
+            logs: Array.isArray(u.logs) ? u.logs : [],
             createdAt: u.createdAt || new Date().toISOString(),
           };
         });
@@ -181,17 +184,8 @@ export const getUsers = async (): Promise<User[]> => {
         }
       }
 
-      // 2. Merge remote users (without overriding local changes)
+      // 2. Merge server remote users with HIGHEST priority
       for (const u of formattedRemote) {
-        const key = u.username.toLowerCase();
-        if (!deletedUsers.has(key)) {
-          const existing = userMap.get(key);
-          userMap.set(key, { ...u, ...existing });
-        }
-      }
-
-      // 3. Merge localUsers with HIGHEST PRIORITY (preserves edited roles, grupos, clientes, logs)
-      for (const u of localUsers) {
         const key = u.username.toLowerCase();
         if (!deletedUsers.has(key)) {
           userMap.set(key, u);
@@ -203,10 +197,10 @@ export const getUsers = async (): Promise<User[]> => {
       return mergedList;
     }
   } catch (e) {
-    console.warn('Apps Script User DB unavailable, using local cache:', e);
+    console.warn('User DB unavailable, using local cache:', e);
   }
 
-  return localUsers;
+  return getLocalUsers();
 };
 
 export const addUserLog = async (
@@ -263,53 +257,22 @@ export const saveUser = async (user: User): Promise<User[]> => {
   // Update local storage instantly
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
 
-  // Sync to remote Apps Script DB asynchronously with multiple delivery fallbacks
+  // Sync to server API (/api/users) with JSON POST
   try {
-    const params = new URLSearchParams();
-    params.append('action', 'saveUser');
-    params.append('username', user.username);
-    params.append('usuario', user.username);
-    params.append('user', user.username);
-    params.append('password', user.password || '123');
-    params.append('senha', user.password || '123');
-    params.append('role', user.role);
-    params.append('nivel', user.role);
-    params.append('nivelAcesso', user.role);
-    const clientesList = user.clientesAtribuidos || [];
-    const gruposList = user.gruposEconomicos || (user.grupoEconomico ? [user.grupoEconomico] : []);
-    const clientesStr = clientesList.join(', ');
-    const gruposStr = gruposList.join(', ');
-
-    params.append('grupoEconomico', user.grupoEconomico || (gruposList[0] || ''));
-    params.append('grupo', user.grupoEconomico || (gruposList[0] || ''));
-    params.append('gruposEconomicos', gruposStr);
-    params.append('gruposAtribuidos', gruposStr);
-    params.append('grupos', gruposStr);
-    params.append('clientesAtribuidos', clientesStr);
-    params.append('clientes', clientesStr);
-    params.append('cliente', clientesStr);
-    params.append('carteira', clientesStr);
-    params.append('clientesCarteira', clientesStr);
-    params.append('t', String(Date.now()));
-
-    const queryString = params.toString();
-    const fullUrl = `${APPS_SCRIPT_USER_URL}?${queryString}`;
-
-    const img = new Image();
-    img.src = fullUrl;
-
-    Promise.allSettled([
-      fetch(`/api/users?${queryString}`).catch(() => {}),
-      fetch(fullUrl, { method: 'GET', mode: 'no-cors' }),
-      fetch(APPS_SCRIPT_USER_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: queryString,
-      }),
-    ]).catch(() => {});
+    const apiRes = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveUser', user }),
+    });
+    if (apiRes.ok) {
+      const json = await apiRes.json();
+      if (json.users && Array.isArray(json.users)) {
+        updatedList = json.users;
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
+      }
+    }
   } catch (e) {
-    console.warn('Could not post to Apps Script user DB:', e);
+    console.warn('Could not post user to /api/users:', e);
   }
 
   return updatedList;
@@ -322,38 +285,27 @@ export const deleteUser = async (username: string): Promise<User[]> => {
   saveDeletedUsers(deletedUsers);
 
   const users = getLocalUsers();
-  const updatedList = users.filter((u) => u.username.toLowerCase() !== username.toLowerCase());
+  let updatedList = users.filter((u) => u.username.toLowerCase() !== username.toLowerCase());
 
   // Update local storage instantly
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
 
-  // Sync delete to Apps Script DB asynchronously with multiple delivery fallbacks
+  // Sync delete to server endpoint
   try {
-    const params = new URLSearchParams();
-    params.append('action', 'deleteUser');
-    params.append('username', username);
-    params.append('usuario', username);
-    params.append('user', username);
-    params.append('t', String(Date.now()));
-
-    const queryString = params.toString();
-    const fullUrl = `${APPS_SCRIPT_USER_URL}?${queryString}`;
-
-    const img = new Image();
-    img.src = fullUrl;
-
-    Promise.allSettled([
-      fetch(`/api/users?${queryString}`).catch(() => {}),
-      fetch(fullUrl, { method: 'GET', mode: 'no-cors' }),
-      fetch(APPS_SCRIPT_USER_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: queryString,
-      }),
-    ]).catch(() => {});
+    const apiRes = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'deleteUser', username }),
+    });
+    if (apiRes.ok) {
+      const json = await apiRes.json();
+      if (json.users && Array.isArray(json.users)) {
+        updatedList = json.users;
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
+      }
+    }
   } catch (e) {
-    console.warn('Could not delete user on Apps Script user DB:', e);
+    console.warn('Could not delete user on server DB:', e);
   }
 
   return updatedList;
