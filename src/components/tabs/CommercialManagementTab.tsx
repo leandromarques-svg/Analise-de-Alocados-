@@ -6,6 +6,7 @@ import {
   getClientAssignments,
 } from '../../utils/commercialUtils';
 import { getUsers, addUserLog, saveCommercialAssignments } from '../../services/userService';
+import { CommercialAnalyticsCharts } from '../CommercialAnalyticsCharts';
 import {
   UserCheck,
   Building2,
@@ -38,8 +39,10 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
   const [assignments, setAssignments] = useState<Record<string, string>>(() => getClientAssignments());
   const [msg, setMsg] = useState('');
   const [selectedRepFilter, setSelectedRepFilter] = useState<string>('all');
+  const [selectedAnalyticsRep, setSelectedAnalyticsRep] = useState<string>('all');
   const [onlyInactiveOver1Year, setOnlyInactiveOver1Year] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [clientSearchTerm, setClientSearchTerm] = useState('');
+  const [grupoSearchTerm, setGrupoSearchTerm] = useState('');
 
   // Load commercial users list
   const loadCommercialUsers = async () => {
@@ -74,16 +77,28 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
     setAssignments({ ...updatedAssignments });
 
     if (repUsername) {
-      setMsg(`Cliente "${clientName}" atribuído ao comercial "${repUsername}" com sucesso!`);
       const matched = clientList.find((c) => c.clientName === clientName);
-      const grp = matched ? matched.grupoEconomico : '';
-      await saveCommercialAssignments(repUsername, [clientName], grp ? [grp] : [], { [clientName]: grp });
+      let grp = matched ? (matched.grupoEconomico || '') : '';
+      const gLower = grp.toLowerCase().trim();
+      if (gLower === 'outros' || gLower === 'sem grupo') {
+        grp = '';
+      }
+
+      setMsg(`Cliente "${clientName}" atribuído ao comercial "${repUsername}" com sucesso!`);
+
+      await saveCommercialAssignments(
+        repUsername,
+        [clientName],
+        grp ? [grp] : [],
+        { [clientName]: grp }
+      );
+
       // Add audit log directly to user profile
       await addUserLog(
         repUsername,
         currentUser.username,
         'Atribuição de Conta Comercial',
-        `Cliente "${clientName}" atribuído à carteira por ${currentUser.username}.`
+        `Cliente "${clientName}" (CNPJ: ${matched?.cnpj || 'N/A'}) atribuído à carteira por ${currentUser.username}.`
       );
     } else {
       setMsg(`Cliente "${clientName}" desatribuído da carteira.`);
@@ -120,6 +135,29 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
     return repStats.sort((a, b) => b.totalFolha - a.totalFolha);
   }, [commercialReps, clientList, assignments]);
 
+  // Selected workers subset for commercial analytics charts
+  const selectedAnalyticsWorkers = useMemo(() => {
+    if (selectedAnalyticsRep === 'all') {
+      return data;
+    }
+    const rep = commercialReps.find((r) => r.username === selectedAnalyticsRep);
+    if (!rep) return [];
+
+    const assigned = clientList.filter((c) => {
+      const directAssign = assignments[c.clientName] === rep.username;
+      const profileAssign = rep.clientesAtribuidos?.includes(c.clientName);
+      return directAssign || profileAssign;
+    });
+    const assignedNames = new Set(assigned.map((a) => a.clientName));
+    const assignedGroups = new Set(rep.gruposEconomicos || []);
+
+    return data.filter(
+      (w) =>
+        assignedNames.has(w.nomeCliente) ||
+        (w.grupoEconomico && assignedGroups.has(w.grupoEconomico))
+    );
+  }, [data, selectedAnalyticsRep, commercialReps, clientList, assignments]);
+
   // Filtered clients list
   const filteredClients = useMemo(() => {
     return clientList.filter((c) => {
@@ -135,18 +173,31 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
         return false;
       }
 
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase();
-        const matches =
-          c.clientName.toLowerCase().includes(q) ||
-          c.grupoEconomico.toLowerCase().includes(q) ||
-          c.cnpj.toLowerCase().includes(q);
-        if (!matches) return false;
+      // Filter by Client or CNPJ
+      if (clientSearchTerm.trim()) {
+        const q = clientSearchTerm.toLowerCase().trim();
+        const matchesName = c.clientName.toLowerCase().includes(q);
+        const matchesCnpj = c.cnpj.toLowerCase().includes(q);
+        if (!matchesName && !matchesCnpj) return false;
+      }
+
+      // Filter by Grupo Economico
+      if (grupoSearchTerm.trim()) {
+        const q = grupoSearchTerm.toLowerCase().trim();
+        const matchesGroup = c.grupoEconomico.toLowerCase().includes(q);
+        if (!matchesGroup) return false;
       }
 
       return true;
     });
-  }, [clientList, onlyInactiveOver1Year, selectedRepFilter, searchTerm, assignments]);
+  }, [
+    clientList,
+    onlyInactiveOver1Year,
+    selectedRepFilter,
+    clientSearchTerm,
+    grupoSearchTerm,
+    assignments,
+  ]);
 
   // Total unassigned clients
   const unassignedCount = useMemo(() => {
@@ -269,31 +320,86 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
         </div>
       </div>
 
+      {/* Commercial Rep Analytics Selector & Contract Migration Charts */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-100">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-[#401669]" />
+              Análise de Contratos e Evolução de Carteira por Comercial
+            </h2>
+            <p className="text-xs text-slate-500">
+              Selecione um executivo comercial para estudar a distribuição de contratos (CLT x Temporário) e a evolução de admissões, prorrogações e saídas.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700">Filtrar Carteira:</span>
+            <select
+              value={selectedAnalyticsRep}
+              onChange={(e) => setSelectedAnalyticsRep(e.target.value)}
+              className="px-3 py-1.5 text-xs bg-purple-50 border border-purple-200 rounded-xl text-[#401669] font-bold focus:outline-none focus:ring-2 focus:ring-[#9c3aff]"
+            >
+              <option value="all">Toda a Equipe Comercial (Visão Geral)</option>
+              {commercialReps.map((r) => (
+                <option key={r.username} value={r.username}>
+                  Executivo: {r.username}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <CommercialAnalyticsCharts
+          workers={selectedAnalyticsWorkers}
+          title={
+            selectedAnalyticsRep === 'all'
+              ? 'Análise Consolidada da Equipe Comercial'
+              : `Análise da Carteira de ${selectedAnalyticsRep}`
+          }
+          subtitle={`Acompanhamento de alocados por tipo de vínculo e evolução temporal de movimentações para a carteira de ${
+            selectedAnalyticsRep === 'all' ? 'toda a equipe' : selectedAnalyticsRep
+          }.`}
+        />
+      </div>
+
       {/* Account Assignment & Inactivity Management Panel */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
         
         {/* Filter Controls Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div>
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Briefcase className="w-5 h-5 text-[#401669]" />
               Gestão e Distribuição da Base de Clientes ({filteredClients.length})
             </h2>
             <p className="text-xs text-slate-500">
-              Filtre empresas inativas há mais de 1 ano ou sem proprietário e atribua um comercial dedicado.
+              Filtre por Cliente/CNPJ ou por Grupo Econômico, identifique empresas inativas há mais de 1 ano ou sem proprietário e atribua um comercial dedicado.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Search Input */}
+            {/* Filter by Client / CNPJ */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Buscar cliente ou grupo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#9c3aff]"
+                placeholder="Filtrar por Cliente ou CNPJ..."
+                value={clientSearchTerm}
+                onChange={(e) => setClientSearchTerm(e.target.value)}
+                className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#9c3aff] min-w-[190px]"
+              />
+            </div>
+
+            {/* Filter by Grupo Econômico */}
+            <div className="relative">
+              <Building2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Filtrar por Grupo Econômico..."
+                value={grupoSearchTerm}
+                onChange={(e) => setGrupoSearchTerm(e.target.value)}
+                className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#9c3aff] min-w-[190px]"
               />
             </div>
 
@@ -333,7 +439,7 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-100 text-slate-700 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
               <tr>
-                <th className="p-3">Cliente / Razão Social</th>
+                <th className="p-3">Cliente / Razão Social &amp; CNPJ</th>
                 <th className="p-3">Grupo Econômico</th>
                 <th className="p-3 text-center">Ativos Totais</th>
                 <th className="p-3">Última Admissão</th>
@@ -346,8 +452,13 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
                 const assignedRep = assignments[client.clientName] || '';
                 return (
                   <tr key={client.clientName} className="hover:bg-purple-50/50 transition-colors">
-                    <td className="p-3 font-bold text-slate-900">
-                      {client.clientName}
+                    <td className="p-3">
+                      <div className="font-bold text-slate-900">{client.clientName}</div>
+                      {client.cnpj && (
+                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                          <span className="font-semibold text-purple-700">CNPJ:</span> {client.cnpj}
+                        </div>
+                      )}
                     </td>
                     <td className="p-3 text-slate-600">
                       {client.grupoEconomico}

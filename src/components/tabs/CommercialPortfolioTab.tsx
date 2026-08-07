@@ -6,6 +6,7 @@ import {
   saveClientAssignment,
   getClientAssignments,
 } from '../../utils/commercialUtils';
+import { CommercialAnalyticsCharts } from '../CommercialAnalyticsCharts';
 import {
   TrendingUp,
   TrendingDown,
@@ -123,8 +124,15 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
       assignedClients.forEach((client) => {
         const match = data.find((w) => w.nomeCliente.toLowerCase() === client.toLowerCase());
         if (match && match.grupoEconomico) {
-          selectedGroupsSet.add(match.grupoEconomico);
-          clientGroupMappings[client] = match.grupoEconomico;
+          const gLower = match.grupoEconomico.toLowerCase().trim();
+          if (gLower !== 'outros' && gLower !== 'sem grupo') {
+            selectedGroupsSet.add(match.grupoEconomico);
+            clientGroupMappings[client] = match.grupoEconomico;
+          } else {
+            clientGroupMappings[client] = '';
+          }
+        } else {
+          clientGroupMappings[client] = '';
         }
       });
 
@@ -214,6 +222,16 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
   const analytics = useMemo(() => {
     return analyzePortfolioForPeriod(data, assignedClients, selectedPeriodMonths);
   }, [data, assignedClients, selectedPeriodMonths]);
+
+  // Portfolio workers subset for charts
+  const portfolioWorkers = useMemo(() => {
+    if (assignedClients.length === 0) return [];
+    return data.filter((w) => {
+      const clientMatch = assignedClients.includes(w.nomeCliente);
+      const groupMatch = Boolean(w.grupoEconomico && assignedClients.includes(w.grupoEconomico));
+      return clientMatch || groupMatch;
+    });
+  }, [data, assignedClients]);
 
   // Filtered clients list for assignment search
   const filteredAvailableClientes = useMemo(() => {
@@ -635,6 +653,13 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
 
       </div>
 
+      {/* Commercial Portfolio Analytics & Contract Migration Charts */}
+      <CommercialAnalyticsCharts
+        workers={portfolioWorkers}
+        title="Estudo de Contratos & Migração de Carteira"
+        subtitle="Analise a distribuição de ativos por tipo de vínculo (Temporário x CLT) e acompanhe a evolução temporal de admissões, prorrogações e desligamentos na sua carteira."
+      />
+
       {/* Alerts & Positive Callouts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
@@ -790,8 +815,13 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
               ) : (
                 analytics.clientStats.map((item) => (
                 <tr key={item.clientName} className="hover:bg-purple-50/50 transition-colors">
-                  <td className="p-3 font-bold text-slate-900">
-                    {item.clientName}
+                  <td className="p-3">
+                    <div className="font-bold text-slate-900">{item.clientName}</div>
+                    {item.cnpj && (
+                      <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                        <span className="font-semibold text-purple-700">CNPJ:</span> {item.cnpj}
+                      </div>
+                    )}
                   </td>
                   <td className="p-3 text-slate-600">
                     {item.grupoEconomico}

@@ -332,7 +332,11 @@ app.all('/api/commercial-assignments', async (req, res) => {
         if (clientes.length > 0) {
           clientes.forEach((cli) => {
             if (!cli) return;
-            const grp = mappings[cli] || grupos[0] || '';
+            let grp = mappings[cli] || '';
+            const gLower = grp.toLowerCase().trim();
+            if (gLower === 'outros' || gLower === 'sem grupo') {
+              grp = '';
+            }
             serverCarteira.push({
               'Grupo Economico': grp,
               'Nome Cliente': cli,
@@ -342,6 +346,8 @@ app.all('/api/commercial-assignments', async (req, res) => {
         } else if (grupos.length > 0) {
           grupos.forEach((grp) => {
             if (!grp) return;
+            const gLower = grp.toLowerCase().trim();
+            if (gLower === 'outros' || gLower === 'sem grupo') return;
             serverCarteira.push({
               'Grupo Economico': grp,
               'Nome Cliente': '',
