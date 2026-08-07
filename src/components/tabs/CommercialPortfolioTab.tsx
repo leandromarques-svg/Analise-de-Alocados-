@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Funcionario, User } from '../../types';
+import { saveUser, setCurrentUser } from '../../services/userService';
 import {
   analyzePortfolioForPeriod,
   saveClientAssignment,
@@ -26,6 +27,8 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
+  Save,
+  Loader2,
 } from 'lucide-react';
 
 interface CommercialPortfolioTabProps {
@@ -33,6 +36,7 @@ interface CommercialPortfolioTabProps {
   currentUser: User;
   availableClientes: string[];
   onSelectWorker?: (worker: Funcionario) => void;
+  onUpdateCurrentUser?: (updatedUser: User) => void;
 }
 
 export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
@@ -40,15 +44,82 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
   currentUser,
   availableClientes,
   onSelectWorker,
+  onUpdateCurrentUser,
 }) => {
   const [selectedPeriodMonths, setSelectedPeriodMonths] = useState<number>(3);
   const [searchTerm, setSearchTerm] = useState('');
   const [grupoSearchTerm, setGrupoSearchTerm] = useState('');
   const [activeSelectionTab, setActiveSelectionTab] = useState<'grupos' | 'clientes'>('grupos');
   const [isSelectionExpanded, setIsSelectionExpanded] = useState<boolean>(false);
-  const [assignedClients, setAssignedClients] = useState<string[]>(
-    currentUser.clientesAtribuidos || []
-  );
+  // Calculate initial portfolio assigned clients based on user profile (clientesAtribuidos and gruposEconomicos)
+  const initialClients = useMemo(() => {
+    const set = new Set<string>(currentUser.clientesAtribuidos || []);
+    const groups = currentUser.gruposEconomicos || (currentUser.grupoEconomico ? [currentUser.grupoEconomico] : []);
+    groups.forEach((groupName) => {
+      if (!groupName) return;
+      const gLower = groupName.toLowerCase().trim();
+      data.forEach((w) => {
+        const grp = w.grupoEconomico?.toLowerCase().trim() || '';
+        if (grp === gLower || grp.includes(gLower) || gLower.includes(grp)) {
+          if (w.nomeCliente) set.add(w.nomeCliente);
+        }
+      });
+    });
+    return Array.from(set);
+  }, [currentUser, data]);
+
+  const [assignedClients, setAssignedClients] = useState<string[]>(initialClients);
+
+  // Keep assignedClients state in sync when currentUser profile updates
+  useEffect(() => {
+    setAssignedClients(initialClients);
+  }, [currentUser.username, currentUser.clientesAtribuidos, currentUser.gruposEconomicos, currentUser.grupoEconomico]);
+
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState('');
+
+  // Check if current local selection differs from user profile
+  const isDirty = useMemo(() => {
+    const currentAssigned = [...(currentUser.clientesAtribuidos || [])].sort();
+    const nowAssigned = [...assignedClients].sort();
+    return JSON.stringify(currentAssigned) !== JSON.stringify(nowAssigned);
+  }, [currentUser.clientesAtribuidos, assignedClients]);
+
+  // Handler to permanently save portfolio selection to user profile
+  const handleSavePortfolioToProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      const selectedGroupsSet = new Set<string>();
+      assignedClients.forEach((client) => {
+        const match = data.find((w) => w.nomeCliente.toLowerCase() === client.toLowerCase());
+        if (match && match.grupoEconomico) {
+          selectedGroupsSet.add(match.grupoEconomico);
+        }
+      });
+
+      const updatedUser: User = {
+        ...currentUser,
+        clientesAtribuidos: assignedClients,
+        gruposEconomicos: Array.from(selectedGroupsSet),
+        grupoEconomico: Array.from(selectedGroupsSet)[0] || currentUser.grupoEconomico || '',
+      };
+
+      await saveUser(updatedUser);
+      setCurrentUser(updatedUser);
+      if (onUpdateCurrentUser) {
+        onUpdateCurrentUser(updatedUser);
+      }
+
+      setSaveSuccessMessage(`Carteira com ${assignedClients.length} empresas salva com sucesso no perfil!`);
+      setTimeout(() => {
+        setSaveSuccessMessage('');
+      }, 4000);
+    } catch (err) {
+      console.error('Erro ao salvar carteira no perfil:', err);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   // Extract all unique economic groups from data
   const availableGrupos = useMemo(() => {
@@ -180,13 +251,34 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
             </h2>
             <p className="text-xs text-slate-500">
               {assignedClients.length === 0
-                ? 'Nenhum cliente selecionado ativamente. Exibindo métricas gerais de toda a base comercial.'
-                : 'Você está visualizando análises focadas nos clientes e grupos vinculados abaixo.'}
+                ? 'Nenhum cliente atrelado à sua carteira. Expanda a área de busca abaixo para selecionar Grupos Econômicos ou Clientes e salvar no seu perfil.'
+                : 'Exibindo análises e indicadores focados estritamente nos clientes e grupos vinculados a esta carteira.'}
             </p>
           </div>
 
-          {/* Selector Subtabs & Chevron Toggle */}
-          <div className="flex items-center gap-2">
+          {/* Selector Subtabs, Save Button & Chevron Toggle */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Save Portfolio Button */}
+            <button
+              onClick={handleSavePortfolioToProfile}
+              disabled={isSavingProfile}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                isDirty
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 ring-2 ring-emerald-400/50'
+                  : 'bg-[#401669] hover:bg-[#2d0e4c] text-white'
+              }`}
+              title="Salvar esta seleção de clientes no perfil do usuário atual"
+            >
+              {isSavingProfile ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : isDirty ? (
+                <Save className="w-3.5 h-3.5" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+              )}
+              <span>{isSavingProfile ? 'Salvando...' : isDirty ? 'Salvar no Perfil' : 'Carteira Salva'}</span>
+            </button>
+
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
               <button
                 onClick={() => {
@@ -240,6 +332,17 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Success message banner */}
+        {saveSuccessMessage && (
+          <div className="bg-emerald-50 text-emerald-800 text-xs font-bold px-4 py-2.5 rounded-xl border border-emerald-200 flex items-center justify-between shadow-xs animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>{saveSuccessMessage}</span>
+            </div>
+            <span className="text-[10px] text-emerald-600 font-semibold">Perfil {currentUser.username} atualizado</span>
+          </div>
+        )}
 
         {/* Grupo Econômico Search & Selection Box */}
         {isSelectionExpanded && activeSelectionTab === 'grupos' && (
@@ -317,6 +420,29 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
                 );
               })}
             </div>
+
+            {/* Save Bar for Grupos Selection */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-3 border-t border-purple-200/60">
+              <span className="text-xs text-slate-700 font-semibold">
+                Sua seleção tem <strong className="text-purple-900 font-extrabold">{assignedClients.length} empresas/CNPJs</strong> vinculados à carteira.
+              </span>
+              <button
+                onClick={handleSavePortfolioToProfile}
+                disabled={isSavingProfile}
+                className={`w-full sm:w-auto px-4 py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
+                  isDirty
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 ring-2 ring-emerald-400/40'
+                    : 'bg-[#401669] hover:bg-[#2d0e4c] text-white'
+                }`}
+              >
+                {isSavingProfile ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>{isSavingProfile ? 'Salvando...' : isDirty ? 'Salvar Seleção no Perfil' : 'Carteira Atualizada no Perfil'}</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -359,6 +485,29 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
                   </button>
                 );
               })}
+            </div>
+
+            {/* Save Bar for Clients Selection */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-3 border-t border-slate-200">
+              <span className="text-xs text-slate-700 font-semibold">
+                Sua seleção tem <strong className="text-purple-900 font-extrabold">{assignedClients.length} empresas/CNPJs</strong> vinculados à carteira.
+              </span>
+              <button
+                onClick={handleSavePortfolioToProfile}
+                disabled={isSavingProfile}
+                className={`w-full sm:w-auto px-4 py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
+                  isDirty
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 ring-2 ring-emerald-400/40'
+                    : 'bg-[#401669] hover:bg-[#2d0e4c] text-white'
+                }`}
+              >
+                {isSavingProfile ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>{isSavingProfile ? 'Salvando...' : isDirty ? 'Salvar Seleção no Perfil' : 'Carteira Atualizada no Perfil'}</span>
+              </button>
             </div>
           </div>
         )}
@@ -585,7 +734,20 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white font-medium">
-              {analytics.clientStats.map((item) => (
+              {analytics.clientStats.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-xs text-slate-500 font-medium">
+                    <div className="max-w-md mx-auto space-y-2 py-4">
+                      <Building2 className="w-8 h-8 text-purple-300 mx-auto" />
+                      <p className="font-bold text-slate-700 text-sm">Nenhum cliente ou grupo vinculado a esta carteira</p>
+                      <p className="text-slate-500 text-xs leading-relaxed">
+                        Utilize a área de "Busca &amp; Seleção" acima para adicionar Grupos Econômicos ou Empresas à carteira do usuário <strong className="text-purple-900">{currentUser.username}</strong> e clique no botão <strong className="text-emerald-700">"Salvar no Perfil"</strong>.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                analytics.clientStats.map((item) => (
                 <tr key={item.clientName} className="hover:bg-purple-50/50 transition-colors">
                   <td className="p-3 font-bold text-slate-900">
                     {item.clientName}
@@ -623,7 +785,7 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
                     )}
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

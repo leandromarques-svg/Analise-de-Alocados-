@@ -158,12 +158,14 @@ export function analyzePortfolioForPeriod(
   const prevPeriodStart = new Date();
   prevPeriodStart.setMonth(now.getMonth() - months * 2);
 
-  const isGlobalOrAll = assignedClients.length === 0;
-
-  // Filter workers belonging to rep's assigned clients (or all if none specified)
-  const portfolioWorkers = workers.filter((w) =>
-    isGlobalOrAll ? true : assignedClients.includes(w.nomeCliente)
-  );
+  // Filter workers belonging strictly to rep's assigned clients or economic groups
+  const portfolioWorkers = assignedClients.length === 0
+    ? []
+    : workers.filter((w) => {
+        const clientMatch = assignedClients.includes(w.nomeCliente);
+        const groupMatch = Boolean(w.grupoEconomico && assignedClients.includes(w.grupoEconomico));
+        return clientMatch || groupMatch;
+      });
 
   const activeWorkers = portfolioWorkers.filter((w) => w.isAtivo);
   const totalMonthlyFolha = activeWorkers.reduce((acc, w) => acc + (w.salario || 0), 0);

@@ -678,6 +678,7 @@ export default function App() {
                 currentUser={currentUser}
                 availableClientes={availableClientes}
                 onSelectWorker={(w) => setSelectedWorker(w)}
+                onUpdateCurrentUser={(updatedUser) => setCurrentUser(updatedUser)}
               />
             )}
 
