@@ -27,8 +27,9 @@ function loadDiskCache() {
       if (fs.existsSync(cachePath)) {
         const raw = fs.readFileSync(cachePath, 'utf8');
         const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0) {
-          cachedData = parsed.data;
+        const list = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.data) ? parsed.data : null);
+        if (list && list.length > 0) {
+          cachedData = list;
           lastFetchTime = parsed.fetchedAt ? new Date(parsed.fetchedAt).getTime() : Date.now();
           console.log(`[METARH Cache] Loaded ${cachedData.length} records from disk cache file (${cachePath}).`);
           break;

@@ -343,6 +343,9 @@ export interface CommercialAssignment {
 }
 
 export const getCommercialAssignments = async (comercialUsername?: string): Promise<CommercialAssignment[]> => {
+  let results: CommercialAssignment[] = [];
+
+  // 1. Try server API (/api/commercial-assignments)
   try {
     const url = comercialUsername
       ? `/api/commercial-assignments?comercial=${encodeURIComponent(comercialUsername)}&t=${Date.now()}`
@@ -351,33 +354,61 @@ export const getCommercialAssignments = async (comercialUsername?: string): Prom
     const apiRes = await fetch(url);
     if (apiRes.ok) {
       const json = await apiRes.json();
-      if (json && Array.isArray(json.data)) {
-        localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(json.data));
-        return json.data;
+      if (json && Array.isArray(json.data) && json.data.length > 0) {
+        results = json.data;
       }
     }
   } catch (e) {
     console.warn('Could not fetch commercial assignments from /api/commercial-assignments:', e);
   }
 
-  // Fallback to local storage
-  try {
-    const stored = localStorage.getItem(CARTEIRA_LOCAL_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        if (comercialUsername) {
-          const lower = comercialUsername.toLowerCase();
-          return parsed.filter((item) => String(item.Comercial || '').toLowerCase() === lower);
+  // 2. Direct fetch fallback from Google Apps Script Web App
+  if (results.length === 0) {
+    try {
+      const scriptUrl = comercialUsername
+        ? `${APPS_SCRIPT_CARTEIRA_URL}?action=getAssignments&comercial=${encodeURIComponent(comercialUsername)}&t=${Date.now()}`
+        : `${APPS_SCRIPT_CARTEIRA_URL}?action=getAssignments&t=${Date.now()}`;
+
+      const res = await fetch(scriptUrl, {
+        headers: { Accept: 'application/json, text/plain, */*' },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const items = Array.isArray(json) ? json : (json && Array.isArray(json.data) ? json.data : []);
+        if (Array.isArray(items) && items.length > 0) {
+          results = items;
         }
-        return parsed;
       }
+    } catch (e) {
+      console.warn('Direct fetch from Apps Script Carteira URL failed:', e);
     }
-  } catch (e) {
-    // ignore
   }
 
-  return [];
+  // 3. Fallback to local storage
+  if (results.length === 0) {
+    try {
+      const stored = localStorage.getItem(CARTEIRA_LOCAL_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (comercialUsername) {
+            const lower = comercialUsername.toLowerCase();
+            results = parsed.filter((item) => String(item.Comercial || '').toLowerCase() === lower);
+          } else {
+            results = parsed;
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  if (results.length > 0) {
+    localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(results));
+  }
+
+  return results;
 };
 
 export const saveCommercialAssignments = async (

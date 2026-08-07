@@ -5,7 +5,7 @@ import {
   saveClientAssignment,
   getClientAssignments,
 } from '../../utils/commercialUtils';
-import { getUsers, addUserLog } from '../../services/userService';
+import { getUsers, addUserLog, saveCommercialAssignments } from '../../services/userService';
 import {
   UserCheck,
   Building2,
@@ -75,6 +75,9 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
 
     if (repUsername) {
       setMsg(`Cliente "${clientName}" atribuído ao comercial "${repUsername}" com sucesso!`);
+      const matched = clientList.find((c) => c.clientName === clientName);
+      const grp = matched ? matched.grupoEconomico : '';
+      await saveCommercialAssignments(repUsername, [clientName], grp ? [grp] : [], { [clientName]: grp });
       // Add audit log directly to user profile
       await addUserLog(
         repUsername,
