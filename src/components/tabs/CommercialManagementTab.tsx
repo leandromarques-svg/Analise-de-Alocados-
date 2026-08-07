@@ -5,7 +5,7 @@ import {
   saveClientAssignment,
   getClientAssignments,
 } from '../../utils/commercialUtils';
-import { getUsers, addUserLog, saveCommercialAssignments } from '../../services/userService';
+import { getUsers, addUserLog, saveCommercialAssignments, saveUser } from '../../services/userService';
 import { CommercialAnalyticsCharts } from '../CommercialAnalyticsCharts';
 import {
   UserCheck,
@@ -73,25 +73,64 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
 
   // Handle reassigning a client to a commercial rep
   const handleAssignRep = async (clientName: string, repUsername: string) => {
+    const previousRepUsername = assignments[clientName];
+
     const updatedAssignments = saveClientAssignment(clientName, repUsername);
     setAssignments({ ...updatedAssignments });
 
+    // Helper to sync all assignments for a given commercial rep
+    const syncRepAssignments = async (repName: string) => {
+      if (!repName) return;
+
+      const repClients = Object.entries(updatedAssignments)
+        .filter(([_, r]) => r === repName)
+        .map(([cli]) => cli);
+
+      const repMappings: Record<string, string> = {};
+      const repGroupsSet = new Set<string>();
+
+      repClients.forEach((cli) => {
+        const match = clientList.find((c) => c.clientName === cli);
+        if (match && match.grupoEconomico) {
+          const gLower = match.grupoEconomico.toLowerCase().trim();
+          if (gLower !== 'outros' && gLower !== 'sem grupo') {
+            repMappings[cli] = match.grupoEconomico;
+            repGroupsSet.add(match.grupoEconomico);
+          } else {
+            repMappings[cli] = '';
+          }
+        } else {
+          repMappings[cli] = '';
+        }
+      });
+
+      const repGroups = Array.from(repGroupsSet);
+
+      // Save to server & Google Sheets "Atendimento Comercial"
+      await saveCommercialAssignments(
+        repName,
+        repClients,
+        repGroups,
+        repMappings
+      );
+
+      // Update user profile in user DB
+      const repUser = commercialReps.find((r) => r.username === repName);
+      if (repUser) {
+        const updatedUser = {
+          ...repUser,
+          clientesAtribuidos: repClients,
+          gruposEconomicos: repGroups,
+        };
+        await saveUser(updatedUser);
+      }
+    };
+
     if (repUsername) {
       const matched = clientList.find((c) => c.clientName === clientName);
-      let grp = matched ? (matched.grupoEconomico || '') : '';
-      const gLower = grp.toLowerCase().trim();
-      if (gLower === 'outros' || gLower === 'sem grupo') {
-        grp = '';
-      }
+      setMsg(`Cliente "${clientName}" atribuído ao comercial "${repUsername}" com sucesso e salvo na planilha de Atendimento Comercial!`);
 
-      setMsg(`Cliente "${clientName}" atribuído ao comercial "${repUsername}" com sucesso!`);
-
-      await saveCommercialAssignments(
-        repUsername,
-        [clientName],
-        grp ? [grp] : [],
-        { [clientName]: grp }
-      );
+      await syncRepAssignments(repUsername);
 
       // Add audit log directly to user profile
       await addUserLog(
@@ -102,6 +141,10 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
       );
     } else {
       setMsg(`Cliente "${clientName}" desatribuído da carteira.`);
+    }
+
+    if (previousRepUsername && previousRepUsername !== repUsername) {
+      await syncRepAssignments(previousRepUsername);
     }
 
     setTimeout(() => setMsg(''), 4000);
