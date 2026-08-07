@@ -493,6 +493,12 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
             <tbody className="divide-y divide-slate-100 bg-white font-medium">
               {filteredClients.map((client) => {
                 const assignedRep = assignments[client.clientName] || '';
+                const isGestorOrAdmin =
+                  currentUser.role === 'Gerencial Comercial' ||
+                  currentUser.role === 'Administrador' ||
+                  currentUser.role === 'RH';
+                const isAssignedToOther = Boolean(assignedRep && assignedRep !== currentUser.username);
+
                 return (
                   <tr key={client.clientName} className="hover:bg-purple-50/50 transition-colors">
                     <td className="p-3">
@@ -530,22 +536,36 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
                       )}
                     </td>
                     <td className="p-3">
-                      <select
-                        value={assignedRep}
-                        onChange={(e) => handleAssignRep(client.clientName, e.target.value)}
-                        className={`w-full px-2.5 py-1 text-xs font-bold rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#9c3aff] transition-all ${
-                          assignedRep
-                            ? 'bg-purple-50 text-[#401669] border-purple-200'
-                            : 'bg-amber-50 text-amber-900 border-amber-300 animate-pulse'
-                        }`}
-                      >
-                        <option value="">-- Sem Proprietário --</option>
-                        {commercialReps.map((r) => (
-                          <option key={r.username} value={r.username}>
-                            Atribuir para: {r.username}
-                          </option>
-                        ))}
-                      </select>
+                      {isAssignedToOther && !isGestorOrAdmin ? (
+                        <div className="px-2.5 py-1.5 text-xs font-bold rounded-xl border bg-slate-100 text-slate-500 border-slate-200 flex items-center justify-between gap-1 shadow-xs" title="Apenas o gestor comercial pode alterar um cliente já atribuído a outro executivo.">
+                          <span className="truncate">Atribuído: <strong className="text-purple-900">{assignedRep}</strong></span>
+                          <Shield className="w-3.5 h-3.5 text-purple-700 flex-shrink-0" />
+                        </div>
+                      ) : (
+                        <select
+                          value={assignedRep}
+                          onChange={(e) => handleAssignRep(client.clientName, e.target.value)}
+                          className={`w-full px-2.5 py-1 text-xs font-bold rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#9c3aff] transition-all cursor-pointer ${
+                            assignedRep
+                              ? 'bg-purple-50 text-[#401669] border-purple-200'
+                              : 'bg-amber-50 text-amber-900 border-amber-300 animate-pulse'
+                          }`}
+                        >
+                          <option value="">-- Sem Proprietário --</option>
+                          {isGestorOrAdmin
+                            ? commercialReps.map((r) => (
+                                <option key={r.username} value={r.username}>
+                                  Atribuir para: {r.username}
+                                </option>
+                              ))
+                            : (
+                              <option value={currentUser.username}>
+                                Atribuir para mim ({currentUser.username})
+                              </option>
+                            )
+                          }
+                        </select>
+                      )}
                     </td>
                   </tr>
                 );

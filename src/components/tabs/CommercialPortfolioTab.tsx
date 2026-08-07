@@ -38,6 +38,7 @@ interface CommercialPortfolioTabProps {
   currentUser: User;
   availableClientes: string[];
   onSelectWorker?: (worker: Funcionario) => void;
+  onSelectClient?: (clientName: string) => void;
   onUpdateCurrentUser?: (updatedUser: User) => void;
 }
 
@@ -46,6 +47,7 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
   currentUser,
   availableClientes,
   onSelectWorker,
+  onSelectClient,
   onUpdateCurrentUser,
 }) => {
   const selectedPeriodMonths = 1; // Always compare Current Month vs Previous Month
@@ -53,6 +55,10 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
   const [grupoSearchTerm, setGrupoSearchTerm] = useState('');
   const [activeSelectionTab, setActiveSelectionTab] = useState<'grupos' | 'clientes'>('grupos');
   const [isSelectionExpanded, setIsSelectionExpanded] = useState<boolean>(false);
+
+  // View filter states for filtering portfolio analytics by Grupo or Cliente
+  const [viewFilterGrupo, setViewFilterGrupo] = useState<string>('all');
+  const [viewFilterCliente, setViewFilterCliente] = useState<string>('all');
 
   // Gestor / Admin rep selection state
   const isGestorOrAdmin =
@@ -209,15 +215,23 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
     return Array.from(new Set(data.map((w) => w.grupoEconomico).filter(Boolean))).sort();
   }, [data]);
 
-  // Synchronize client assignments locally
+  // Synchronize client assignments locally with ownership check
   const handleToggleClientAssignment = (clientName: string) => {
+    const allAssignments = getClientAssignments();
+    const currentOwner = allAssignments[clientName];
+
+    if (currentOwner && currentOwner !== targetUser.username && !isGestorOrAdmin) {
+      alert(`O cliente "${clientName}" já está atribuído ao comercial "${currentOwner}". Apenas o gestor comercial pode reatribuir esta propriedade.`);
+      return;
+    }
+
     let next: string[];
     if (assignedClients.includes(clientName)) {
       next = assignedClients.filter((c) => c !== clientName);
       saveClientAssignment(clientName, '');
     } else {
       next = [...assignedClients, clientName];
-      saveClientAssignment(clientName, currentUser.username);
+      saveClientAssignment(clientName, targetUser.username);
     }
     setAssignedClients(next);
   };
@@ -239,6 +253,17 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
 
     if (clientsInGroup.length === 0) return;
 
+    const allAssignments = getClientAssignments();
+    const hasUnownedClients = clientsInGroup.some((c) => {
+      const owner = allAssignments[c];
+      return owner && owner !== targetUser.username && !isGestorOrAdmin;
+    });
+
+    if (hasUnownedClients) {
+      alert(`Algumas empresas deste grupo econômico já pertencem a outro executivo comercial. Apenas o gestor comercial pode reatribuir.`);
+      return;
+    }
+
     const allSelected = clientsInGroup.every((c) => assignedClients.includes(c));
 
     let next: string[];
@@ -247,25 +272,67 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
       clientsInGroup.forEach((c) => saveClientAssignment(c, ''));
     } else {
       next = Array.from(new Set([...assignedClients, ...clientsInGroup]));
-      clientsInGroup.forEach((c) => saveClientAssignment(c, currentUser.username));
+      clientsInGroup.forEach((c) => saveClientAssignment(c, targetUser.username));
     }
     setAssignedClients(next);
   };
 
-  // Perform portfolio analysis over selected timeframe (3m, 6m, 9m, 12m)
+  // Derive available Grupos and Clientes present in the assigned portfolio for view filtering
+  const portfolioGrupos = useMemo(() => {
+    const set = new Set<string>();
+    data.forEach((w) => {
+      if (assignedClients.includes(w.nomeCliente) || (w.grupoEconomico && assignedClients.includes(w.grupoEconomico))) {
+        if (w.grupoEconomico && w.grupoEconomico !== 'Outros' && w.grupoEconomico !== 'Sem Grupo') {
+          set.add(w.grupoEconomico);
+        }
+      }
+    });
+    return Array.from(set).sort();
+  }, [data, assignedClients]);
+
+  const portfolioClientesList = useMemo(() => {
+    const set = new Set<string>();
+    data.forEach((w) => {
+      if (assignedClients.includes(w.nomeCliente) || (w.grupoEconomico && assignedClients.includes(w.grupoEconomico))) {
+        if (w.nomeCliente) set.add(w.nomeCliente);
+      }
+    });
+    return Array.from(set).sort();
+  }, [data, assignedClients]);
+
+  // Compute active filtered clients for analytics and cards
+  const activeFilteredClients = useMemo(() => {
+    if (viewFilterCliente !== 'all') {
+      return [viewFilterCliente];
+    }
+    if (viewFilterGrupo !== 'all') {
+      const set = new Set<string>();
+      const gLower = viewFilterGrupo.toLowerCase().trim();
+      data.forEach((w) => {
+        const grp = w.grupoEconomico?.toLowerCase().trim() || '';
+        if (grp === gLower || grp.includes(gLower) || gLower.includes(grp)) {
+          if (w.nomeCliente) set.add(w.nomeCliente);
+        }
+      });
+      return Array.from(set);
+    }
+    return assignedClients;
+  }, [assignedClients, viewFilterGrupo, viewFilterCliente, data]);
+
+  // Perform portfolio analysis over selected timeframe
   const analytics = useMemo(() => {
-    return analyzePortfolioForPeriod(data, assignedClients, selectedPeriodMonths);
-  }, [data, assignedClients, selectedPeriodMonths]);
+    return analyzePortfolioForPeriod(data, activeFilteredClients, selectedPeriodMonths);
+  }, [data, activeFilteredClients, selectedPeriodMonths]);
 
   // Portfolio workers subset for charts
   const portfolioWorkers = useMemo(() => {
-    if (assignedClients.length === 0) return [];
+    if (activeFilteredClients.length === 0) return [];
     return data.filter((w) => {
-      const clientMatch = assignedClients.includes(w.nomeCliente);
-      const groupMatch = Boolean(w.grupoEconomico && assignedClients.includes(w.grupoEconomico));
+      const clientMatch = activeFilteredClients.includes(w.nomeCliente);
+      const groupMatch = Boolean(w.grupoEconomico && activeFilteredClients.includes(w.grupoEconomico));
       return clientMatch || groupMatch;
     });
-  }, [data, assignedClients]);
+  }, [data, activeFilteredClients]);
 
   // Filtered clients list for assignment search
   const filteredAvailableClientes = useMemo(() => {
@@ -632,6 +699,69 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
             </div>
           </div>
         )}
+      </div>
+
+      {/* View Filter Bar for Commercial Rep */}
+      <div className="bg-white p-4 rounded-2xl border border-purple-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-purple-100 text-[#401669] flex items-center justify-center font-bold flex-shrink-0">
+            <Filter className="w-5 h-5 text-[#401669]" />
+          </div>
+          <div>
+            <span className="text-xs font-black text-slate-900 block uppercase tracking-wider">Filtrar Visão da Carteira</span>
+            <span className="text-[11px] font-semibold text-slate-500">Refine os indicadores e relatórios por Grupo Econômico ou Empresa específica</span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Filter by Grupo Econômico */}
+          <div className="flex items-center gap-1.5 flex-1 md:flex-none">
+            <span className="text-xs font-bold text-slate-600">Grupo:</span>
+            <select
+              value={viewFilterGrupo}
+              onChange={(e) => {
+                setViewFilterGrupo(e.target.value);
+                setViewFilterCliente('all');
+              }}
+              className="w-full md:w-auto px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#9c3aff] cursor-pointer"
+            >
+              <option value="all">Todos os Grupos ({portfolioGrupos.length})</option>
+              {portfolioGrupos.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter by Cliente */}
+          <div className="flex items-center gap-1.5 flex-1 md:flex-none">
+            <span className="text-xs font-bold text-slate-600">Empresa:</span>
+            <select
+              value={viewFilterCliente}
+              onChange={(e) => {
+                setViewFilterCliente(e.target.value);
+                setViewFilterGrupo('all');
+              }}
+              className="w-full md:w-auto px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#9c3aff] cursor-pointer"
+            >
+              <option value="all">Todas as Empresas ({portfolioClientesList.length})</option>
+              {portfolioClientesList.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          {(viewFilterGrupo !== 'all' || viewFilterCliente !== 'all') && (
+            <button
+              onClick={() => {
+                setViewFilterGrupo('all');
+                setViewFilterCliente('all');
+              }}
+              className="px-3 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 transition-all cursor-pointer"
+            >
+              Limpar Filtro
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Metric Cards Grid */}

@@ -691,6 +691,10 @@ export default function App() {
                 currentUser={currentUser}
                 availableClientes={availableClientes}
                 onSelectWorker={(w) => setSelectedWorker(w)}
+                onSelectClient={(clientName) => {
+                  setFilters({ ...filters, cliente: clientName });
+                  setActiveTab('overview');
+                }}
                 onUpdateCurrentUser={(updatedUser) => setCurrentUser(updatedUser)}
               />
             )}

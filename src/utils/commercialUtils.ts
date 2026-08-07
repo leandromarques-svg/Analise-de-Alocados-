@@ -27,6 +27,23 @@ export interface PortfolioAlert {
   metricChange: string;
 }
 
+// Format date string to DD/MM/AAAA format
+export function formatDateDDMMAAAA(dateStr: string | null | undefined): string {
+  if (!dateStr) return 'Sem registro';
+  const clean = dateStr.trim();
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(clean)) return clean;
+  const parts = clean.split('T')[0].split('-');
+  if (parts.length === 3 && parts[0].length === 4) {
+    return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+  }
+  const d = new Date(clean);
+  if (isNaN(d.getTime())) return clean;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 // Read client assignments mapping from localStorage
 export function getClientAssignments(): Record<string, string> {
   try {
@@ -134,7 +151,7 @@ export function getClientInactivityList(
       inactiveWorkers: clientWorkers.length - activeWorkers,
       totalMonthlySalary: totalSalary,
       averageSalary: activeWorkers > 0 ? totalSalary / activeWorkers : 0,
-      lastAdmissionDate: latestAdmissionStr,
+      lastAdmissionDate: formatDateDDMMAAAA(latestAdmissionStr),
       daysSinceLastAdmission,
       isInactiveOver1Year,
       assignedRep: assignments[clientName] || '',
