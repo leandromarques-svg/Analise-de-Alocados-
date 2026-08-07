@@ -1,12 +1,33 @@
-export type UserRole = 'Administrador' | 'Colaborador' | 'Cliente';
+export type UserRole = 
+  | 'Administrador' 
+  | 'Colaborador' 
+  | 'Cliente' 
+  | 'RH' 
+  | 'Comercial' 
+  | 'Gerencial Comercial';
+
+export interface UserLog {
+  id: string;
+  timestamp: string;
+  author: string;
+  action: string;
+  details: string;
+}
 
 export interface User {
   id?: string;
   username: string;
   password?: string;
   role: UserRole;
-  grupoEconomico?: string;
+  grupoEconomico?: string; // Legacy or primary
+  gruposEconomicos?: string[]; // Multi-selection for Cliente
+  clientesAtribuidos?: string[]; // Multi-selection of Clients (by name or CNPJ)
+  cnpjsAtribuidos?: string[];
+  email?: string;
+  phone?: string;
+  logs?: UserLog[];
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface FuncionarioRaw {

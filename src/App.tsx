@@ -17,9 +17,11 @@ import { RegionalTab } from './components/tabs/RegionalTab';
 import { DataTableTab } from './components/tabs/DataTableTab';
 import { ContractExpirationsTab } from './components/tabs/ContractExpirationsTab';
 import { TalentBankTab } from './components/tabs/TalentBankTab';
+import { CommercialPortfolioTab } from './components/tabs/CommercialPortfolioTab';
+import { CommercialManagementTab } from './components/tabs/CommercialManagementTab';
 import { Footer } from './components/Footer';
 import { EmployeeModal } from './components/EmployeeModal';
-import { LayoutDashboard, Calendar, Briefcase, Building2, MapPin, Table, AlertTriangle, UserCheck, FolderKanban, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Calendar, Briefcase, Building2, MapPin, Table, AlertTriangle, UserCheck, FolderKanban, ChevronDown, BarChart3, Users, PieChart } from 'lucide-react';
 
 const initialFilters: FilterOptions = {
   status: 'all',
@@ -44,14 +46,38 @@ export default function App() {
   const [isBackgroundUpdating, setIsBackgroundUpdating] = useState<boolean>(false);
   const [dataSource, setDataSource] = useState<'live' | 'cache' | 'stale_cache' | 'fallback'>('live');
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'temporal' | 'salaries' | 'regional' | 'contracts' | 'groups' | 'talent_bank' | 'table'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    | 'overview'
+    | 'temporal'
+    | 'salaries'
+    | 'regional'
+    | 'contracts'
+    | 'groups'
+    | 'talent_bank'
+    | 'table'
+    | 'comercial_carteira'
+    | 'comercial_gestao'
+  >(() => {
+    const role = currentUser?.role;
+    if (role === 'RH') return 'talent_bank';
+    if (role === 'Comercial') return 'comercial_carteira';
+    if (role === 'Gerencial Comercial') return 'comercial_gestao';
+    return 'overview';
+  });
+
   const [isOutrosEstudosExpanded, setIsOutrosEstudosExpanded] = useState<boolean>(false);
   const [filters, setFilters] = useState<FilterOptions>(initialFilters);
   const [selectedWorker, setSelectedWorker] = useState<Funcionario | null>(null);
 
-  // Safety redirect for Cliente role
+  // Safety redirect for restricted roles
   useEffect(() => {
-    if (currentUser?.role === 'Cliente' && (activeTab === 'groups' || activeTab === 'talent_bank')) {
+    if (!currentUser) return;
+    if (currentUser.role === 'RH' && activeTab !== 'talent_bank') {
+      setActiveTab('talent_bank');
+    } else if (
+      currentUser.role === 'Cliente' &&
+      ['groups', 'talent_bank', 'comercial_carteira', 'comercial_gestao'].includes(activeTab)
+    ) {
       setActiveTab('overview');
     }
   }, [currentUser, activeTab]);
@@ -61,14 +87,32 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  // Restrict base dataset for 'Cliente' role to their assigned grupoEconomico
+  // Restrict base dataset for 'Cliente' role to their assigned grupoEconomicos & clientes
   const roleFilteredData = useMemo(() => {
-    if (currentUser?.role === 'Cliente' && currentUser.grupoEconomico) {
-      const targetGroup = currentUser.grupoEconomico.toLowerCase().trim();
-      return data.filter((item) =>
-        item.grupoEconomico.toLowerCase().trim().includes(targetGroup) ||
-        targetGroup.includes(item.grupoEconomico.toLowerCase().trim())
-      );
+    if (currentUser?.role === 'Cliente') {
+      const userGroups =
+        currentUser.gruposEconomicos && currentUser.gruposEconomicos.length > 0
+          ? currentUser.gruposEconomicos.map((g) => g.toLowerCase().trim())
+          : currentUser.grupoEconomico
+          ? [currentUser.grupoEconomico.toLowerCase().trim()]
+          : [];
+
+      const userClients = (currentUser.clientesAtribuidos || []).map((c) => c.toLowerCase().trim());
+
+      if (userGroups.length === 0 && userClients.length === 0) return data;
+
+      return data.filter((item) => {
+        const itemGroup = item.grupoEconomico.toLowerCase().trim();
+        const itemClient = item.nomeCliente.toLowerCase().trim();
+        const itemCnpj = item.cnpjCliente?.toLowerCase().trim() || '';
+
+        const matchesGroup = userGroups.some((g) => itemGroup.includes(g) || g.includes(itemGroup));
+        const matchesClient = userClients.some(
+          (c) => itemClient.includes(c) || c.includes(itemClient) || (itemCnpj && itemCnpj.includes(c))
+        );
+
+        return matchesGroup || matchesClient;
+      });
     }
     return data;
   }, [data, currentUser]);
@@ -424,149 +468,200 @@ export default function App() {
         <KPICards metrics={metrics} />
 
         {/* Navigation Bar with Collapsible Outros Estudos */}
-        <div className="space-y-2 mb-6">
-          {/* Main Analytics Bar (Análise Geral) */}
-          <div className="flex flex-wrap sm:flex-nowrap overflow-x-auto gap-1.5 p-1.5 bg-slate-200/70 rounded-2xl border border-slate-200/80 no-scrollbar items-center justify-between">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-              <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-500 px-3 py-1 bg-slate-300/60 rounded-xl flex-shrink-0">
-                Análise Geral:
-              </span>
-
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                  activeTab === 'overview'
-                    ? 'bg-[#401669] text-white shadow-xs'
-                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                Visão Geral
-              </button>
-
-              <button
-                onClick={() => setActiveTab('temporal')}
-                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                  activeTab === 'temporal'
-                    ? 'bg-[#401669] text-white shadow-xs'
-                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
-                }`}
-              >
-                <Calendar className="w-4 h-4" />
-                Análise Temporal
-              </button>
-
-              <button
-                onClick={() => setActiveTab('salaries')}
-                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                  activeTab === 'salaries'
-                    ? 'bg-[#401669] text-white shadow-xs'
-                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
-                }`}
-              >
-                <Briefcase className="w-4 h-4" />
-                Ranking Vagas & Salários
-              </button>
-
-              <button
-                onClick={() => setActiveTab('regional')}
-                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                  activeTab === 'regional'
-                    ? 'bg-[#401669] text-white shadow-xs'
-                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
-                }`}
-              >
-                <MapPin className="w-4 h-4" />
-                Distribuição Regional
-              </button>
+        {currentUser?.role === 'RH' ? (
+          <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-emerald-950">Acesso Restrito: Banco de Talentos RH</h2>
+                <p className="text-xs text-emerald-700">
+                  Pesquise ex-alocados para processos seletivos e novas oportunidades de recrutamento.
+                </p>
+              </div>
             </div>
-
-            {/* Circle Expansion Button for Outros Estudos */}
-            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300/80 flex-shrink-0 ml-auto">
-              <span className="text-[10px] font-bold text-[#401669] hidden md:inline">
-                Outros Estudos
-              </span>
-              <button
-                onClick={() => setIsOutrosEstudosExpanded(!isOutrosEstudosExpanded)}
-                title={isOutrosEstudosExpanded ? "Recolher Outros Estudos" : "Expandir Outros Estudos"}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer border ${
-                  isOutrosEstudosExpanded || ['contracts', 'groups', 'talent_bank', 'table'].includes(activeTab)
-                    ? 'bg-[#401669] text-white border-[#401669] shadow-xs'
-                    : 'bg-white text-[#401669] border-slate-300 hover:bg-purple-100'
-                }`}
-              >
-                <ChevronDown
-                  className={`w-4 h-4 transition-transform duration-300 ${
-                    isOutrosEstudosExpanded || ['contracts', 'groups', 'talent_bank', 'table'].includes(activeTab)
-                      ? 'rotate-180'
-                      : ''
-                  }`}
-                />
-              </button>
-            </div>
+            <span className="px-3 py-1 bg-emerald-200 text-emerald-900 text-xs font-bold rounded-xl">
+              Perfil RH
+            </span>
           </div>
+        ) : (
+          <div className="space-y-2 mb-6">
+            {/* Main Analytics Bar (Análise Geral + Role Tabs) */}
+            <div className="flex flex-wrap sm:flex-nowrap overflow-x-auto gap-1.5 p-1.5 bg-slate-200/70 rounded-2xl border border-slate-200/80 no-scrollbar items-center justify-between">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-500 px-3 py-1 bg-slate-300/60 rounded-xl flex-shrink-0">
+                  Visão &amp; Módulos:
+                </span>
 
-          {/* Expanded Outros Estudos Sub-Bar */}
-          {(isOutrosEstudosExpanded || ['contracts', 'groups', 'talent_bank', 'table'].includes(activeTab)) && (
-            <div className="flex overflow-x-auto gap-1.5 p-1.5 bg-purple-50/90 rounded-2xl border border-purple-200/80 no-scrollbar items-center animate-fadeIn">
-              <span className="text-[10px] uppercase tracking-wider font-extrabold text-[#401669] px-3 py-1 bg-purple-100/80 rounded-xl flex-shrink-0 flex items-center gap-1">
-                <FolderKanban className="w-3 h-3" /> Outros Estudos:
-              </span>
-
-              <button
-                onClick={() => setActiveTab('contracts')}
-                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                  activeTab === 'contracts'
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'text-rose-800 hover:bg-rose-100/70'
-                }`}
-              >
-                <AlertTriangle className="w-4 h-4" />
-                Contratos a Vencer
-              </button>
-
-              {currentUser?.role !== 'Cliente' && (
-                <>
+                {/* Dedicated Commercial Head Tab */}
+                {(currentUser?.role === 'Gerencial Comercial' || currentUser?.role === 'Administrador') && (
                   <button
-                    onClick={() => setActiveTab('groups')}
+                    onClick={() => setActiveTab('comercial_gestao')}
                     className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                      activeTab === 'groups'
-                        ? 'bg-[#401669] text-white shadow-xs'
-                        : 'text-purple-900 hover:bg-purple-100/70'
+                      activeTab === 'comercial_gestao'
+                        ? 'bg-indigo-900 text-white shadow-md font-extrabold ring-2 ring-indigo-400'
+                        : 'bg-indigo-100/90 text-indigo-900 hover:bg-indigo-200'
                     }`}
                   >
-                    <Building2 className="w-4 h-4" />
-                    Grupos Econômicos
+                    <Users className="w-4 h-4 text-indigo-700" />
+                    Gestão Equipe Comercial
                   </button>
+                )}
 
+                {/* Dedicated Commercial Rep Portfolio Tab */}
+                {(currentUser?.role === 'Comercial' ||
+                  currentUser?.role === 'Gerencial Comercial' ||
+                  currentUser?.role === 'Administrador') && (
                   <button
-                    onClick={() => setActiveTab('talent_bank')}
+                    onClick={() => setActiveTab('comercial_carteira')}
                     className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                      activeTab === 'talent_bank'
-                        ? 'bg-[#401669] text-white shadow-xs'
-                        : 'text-purple-900 hover:bg-purple-100/70'
+                      activeTab === 'comercial_carteira'
+                        ? 'bg-amber-800 text-white shadow-md font-extrabold ring-2 ring-amber-400'
+                        : 'bg-amber-100/90 text-amber-900 hover:bg-amber-200'
                     }`}
                   >
-                    <UserCheck className="w-4 h-4 text-amber-500 fill-amber-400" />
-                    Banco de Talentos
+                    <BarChart3 className="w-4 h-4 text-amber-700" />
+                    Análise da Carteira Comercial
                   </button>
-                </>
-              )}
+                )}
 
-              <button
-                onClick={() => setActiveTab('table')}
-                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                  activeTab === 'table'
-                    ? 'bg-[#401669] text-white shadow-xs'
-                    : 'text-purple-900 hover:bg-purple-100/70'
-                }`}
-              >
-                <Table className="w-4 h-4" />
-                Tabela Completa
-              </button>
+                <button
+                  onClick={() => setActiveTab('overview')}
+                  className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                    activeTab === 'overview'
+                      ? 'bg-[#401669] text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Visão Geral
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('temporal')}
+                  className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                    activeTab === 'temporal'
+                      ? 'bg-[#401669] text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
+                  }`}
+                >
+                  <Calendar className="w-4 h-4" />
+                  Análise Temporal
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('salaries')}
+                  className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                    activeTab === 'salaries'
+                      ? 'bg-[#401669] text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
+                  }`}
+                >
+                  <Briefcase className="w-4 h-4" />
+                  Ranking Vagas &amp; Salários
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('regional')}
+                  className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                    activeTab === 'regional'
+                      ? 'bg-[#401669] text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
+                  }`}
+                >
+                  <MapPin className="w-4 h-4" />
+                  Distribuição Regional
+                </button>
+              </div>
+
+              {/* Circle Expansion Button for Outros Estudos */}
+              <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300/80 flex-shrink-0 ml-auto">
+                <span className="text-[10px] font-bold text-[#401669] hidden md:inline">
+                  Outros Estudos
+                </span>
+                <button
+                  onClick={() => setIsOutrosEstudosExpanded(!isOutrosEstudosExpanded)}
+                  title={isOutrosEstudosExpanded ? "Recolher Outros Estudos" : "Expandir Outros Estudos"}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer border ${
+                    isOutrosEstudosExpanded || ['contracts', 'groups', 'talent_bank', 'table'].includes(activeTab)
+                      ? 'bg-[#401669] text-white border-[#401669] shadow-xs'
+                      : 'bg-white text-[#401669] border-slate-300 hover:bg-purple-100'
+                  }`}
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform duration-300 ${
+                      isOutrosEstudosExpanded || ['contracts', 'groups', 'talent_bank', 'table'].includes(activeTab)
+                        ? 'rotate-180'
+                        : ''
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
-          )}
-        </div>
+
+            {/* Expanded Outros Estudos Sub-Bar */}
+            {(isOutrosEstudosExpanded || ['contracts', 'groups', 'talent_bank', 'table'].includes(activeTab)) && (
+              <div className="flex overflow-x-auto gap-1.5 p-1.5 bg-purple-50/90 rounded-2xl border border-purple-200/80 no-scrollbar items-center animate-fadeIn">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-[#401669] px-3 py-1 bg-purple-100/80 rounded-xl flex-shrink-0 flex items-center gap-1">
+                  <FolderKanban className="w-3 h-3" /> Outros Estudos:
+                </span>
+
+                <button
+                  onClick={() => setActiveTab('contracts')}
+                  className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                    activeTab === 'contracts'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'text-rose-800 hover:bg-rose-100/70'
+                  }`}
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  Contratos a Vencer
+                </button>
+
+                {currentUser?.role !== 'Cliente' && (
+                  <>
+                    <button
+                      onClick={() => setActiveTab('groups')}
+                      className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                        activeTab === 'groups'
+                          ? 'bg-[#401669] text-white shadow-xs'
+                          : 'text-purple-900 hover:bg-purple-100/70'
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4" />
+                      Grupos Econômicos
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('talent_bank')}
+                      className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                        activeTab === 'talent_bank'
+                          ? 'bg-[#401669] text-white shadow-xs'
+                          : 'text-purple-900 hover:bg-purple-100/70'
+                      }`}
+                    >
+                      <UserCheck className="w-4 h-4 text-amber-500 fill-amber-400" />
+                      Banco de Talentos
+                    </button>
+                  </>
+                )}
+
+                <button
+                  onClick={() => setActiveTab('table')}
+                  className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                    activeTab === 'table'
+                      ? 'bg-[#401669] text-white shadow-xs'
+                      : 'text-purple-900 hover:bg-purple-100/70'
+                  }`}
+                >
+                  <Table className="w-4 h-4" />
+                  Tabela Completa
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tab Content Rendering */}
         {isLoading ? (
@@ -577,6 +672,22 @@ export default function App() {
           </div>
         ) : (
           <>
+            {activeTab === 'comercial_carteira' && (
+              <CommercialPortfolioTab
+                data={roleFilteredData}
+                currentUser={currentUser}
+                availableClientes={availableClientes}
+                onSelectWorker={(w) => setSelectedWorker(w)}
+              />
+            )}
+
+            {activeTab === 'comercial_gestao' && (
+              <CommercialManagementTab
+                data={data}
+                currentUser={currentUser}
+              />
+            )}
+
             {activeTab === 'overview' && (
               <OverviewTab
                 data={filteredData}
@@ -662,6 +773,8 @@ export default function App() {
         onClose={() => setIsUsersModalOpen(false)}
         currentUser={currentUser}
         availableGrupos={availableGrupos}
+        availableClientes={availableClientes}
+        data={data}
       />
 
       {/* App Footer */}

@@ -1,18 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { User, UserRole } from '../types';
-import { getUsers, saveUser, deleteUser } from '../services/userService';
-import { Users, UserPlus, Trash2, Shield, Building2, X, CheckCircle2, Lock, Code2, Copy, Check, Loader2 } from 'lucide-react';
+import { User, UserRole, UserLog, Funcionario } from '../types';
+import { getUsers, saveUser, deleteUser, addUserLog } from '../services/userService';
+import {
+  Users,
+  UserPlus,
+  Trash2,
+  Shield,
+  Building2,
+  X,
+  CheckCircle2,
+  Lock,
+  Code2,
+  Copy,
+  Check,
+  Loader2,
+  Edit2,
+  History,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Briefcase,
+  Search,
+} from 'lucide-react';
 
 interface UserManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   availableGrupos: string[];
+  availableClientes?: string[];
+  data?: Funcionario[];
+  currentUser: User;
 }
 
 export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   isOpen,
   onClose,
   availableGrupos,
+  availableClientes = [],
+  data = [],
+  currentUser,
 }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,12 +46,19 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [msg, setMsg] = useState('');
   const [showScriptInfo, setShowScriptInfo] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
+  const [expandedLogsUser, setExpandedLogsUser] = useState<string | null>(null);
+
+  // Edit or Add Mode
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // Form State
-  const [newUsername, setNewUsername] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<UserRole>('Colaborador');
-  const [newGrupo, setNewGrupo] = useState('');
+  const [formUsername, setFormUsername] = useState('');
+  const [formPassword, setFormPassword] = useState('');
+  const [formRole, setFormRole] = useState<UserRole>('Colaborador');
+  const [selectedGrupos, setSelectedGrupos] = useState<string[]>([]);
+  const [selectedClientes, setSelectedClientes] = useState<string[]>([]);
+  const [clientSearch, setClientSearch] = useState('');
+  const [grupoSearch, setGrupoSearch] = useState('');
 
   const loadUsers = async () => {
     setIsLoading(true);
@@ -43,43 +76,122 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     if (isOpen) {
       loadUsers();
       setMsg('');
+      resetForm();
     }
   }, [isOpen]);
 
+  const resetForm = () => {
+    setEditingUser(null);
+    setFormUsername('');
+    setFormPassword('');
+    setFormRole('Colaborador');
+    setSelectedGrupos([]);
+    setSelectedClientes([]);
+    setClientSearch('');
+    setGrupoSearch('');
+  };
+
+  const handleStartEdit = (user: User) => {
+    setEditingUser(user);
+    setFormUsername(user.username);
+    setFormPassword(user.password || '123');
+    setFormRole(user.role);
+    setSelectedGrupos(user.gruposEconomicos || (user.grupoEconomico ? [user.grupoEconomico] : []));
+    setSelectedClientes(user.clientesAtribuidos || []);
+  };
+
+  const toggleGrupoSelection = (grupo: string) => {
+    const isSel = selectedGrupos.includes(grupo);
+    let updatedGrupos: string[];
+    if (isSel) {
+      updatedGrupos = selectedGrupos.filter((g) => g !== grupo);
+    } else {
+      updatedGrupos = [...selectedGrupos, grupo];
+    }
+    setSelectedGrupos(updatedGrupos);
+
+    // Auto-select clients belonging to this group if selecting
+    if (!isSel && data && data.length > 0) {
+      const gLower = grupo.toLowerCase().trim();
+      const clientsInGroup: string[] = Array.from(
+        new Set(
+          data
+            .filter((w) => {
+              const itemGroup = w.grupoEconomico.toLowerCase().trim();
+              return itemGroup.includes(gLower) || gLower.includes(itemGroup);
+            })
+            .map((w) => w.nomeCliente)
+            .filter(Boolean)
+        )
+      );
+      if (clientsInGroup.length > 0) {
+        setSelectedClientes((prev) => Array.from(new Set([...prev, ...clientsInGroup])));
+      }
+    }
+  };
+
+  const toggleClienteSelection = (cliente: string) => {
+    if (selectedClientes.includes(cliente)) {
+      setSelectedClientes(selectedClientes.filter((c) => c !== cliente));
+    } else {
+      setSelectedClientes([...selectedClientes, cliente]);
+    }
+  };
+
   if (!isOpen) return null;
 
-  const handleAddUser = async (e: React.FormEvent) => {
+  const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUsername.trim()) {
+    if (!formUsername.trim()) {
       setMsg('Informe o nome de usuário.');
       return;
     }
 
-    if (newRole === 'Cliente' && !newGrupo) {
-      setMsg('Selecione o Grupo Econômico atribuído ao Cliente.');
+    if (formRole === 'Cliente' && selectedGrupos.length === 0 && selectedClientes.length === 0) {
+      setMsg('Selecione ao menos um Grupo Econômico ou Cliente para o perfil Cliente.');
       return;
     }
 
     setIsSaving(true);
-    setMsg('Sincronizando com a planilha Google Sheets...');
+    setMsg('Sincronizando com a base de dados...');
 
-    const newUser: User = {
-      username: newUsername.trim(),
-      password: newPassword.trim() || '123',
-      role: newRole,
-      grupoEconomico: newRole === 'Cliente' ? newGrupo : undefined,
+    const now = new Date().toISOString();
+    const actionText = editingUser ? 'Edição de Perfil e Permissões' : 'Criação de Usuário';
+    const logDetail = editingUser
+      ? `Permissões do usuário "${formUsername}" alteradas para ${formRole} por ${currentUser.username}.`
+      : `Novo usuário "${formUsername}" criado com nível ${formRole} por ${currentUser.username}.`;
+
+    const newLog: UserLog = {
+      id: String(Date.now()),
+      timestamp: now,
+      author: currentUser.username,
+      action: actionText,
+      details: logDetail,
+    };
+
+    const targetUser: User = {
+      ...(editingUser || {}),
+      username: formUsername.trim(),
+      password: formPassword.trim() || '123',
+      role: formRole,
+      grupoEconomico: selectedGrupos[0] || '',
+      gruposEconomicos: selectedGrupos,
+      clientesAtribuidos: selectedClientes,
+      logs: [newLog, ...(editingUser?.logs || [])],
+      updatedAt: now,
     };
 
     try {
-      const updated = await saveUser(newUser);
+      const updated = await saveUser(targetUser);
       setUsers(updated);
-      setMsg(`Usuário "${newUsername}" cadastrado e enviado para a planilha de senhas!`);
-      setNewUsername('');
-      setNewPassword('');
-      setNewRole('Colaborador');
-      setNewGrupo('');
+      setMsg(
+        editingUser
+          ? `Usuário "${formUsername}" atualizado com sucesso!`
+          : `Usuário "${formUsername}" cadastrado com sucesso!`
+      );
+      resetForm();
     } catch (err) {
-      setMsg('Erro ao salvar usuário.');
+      setMsg('Erro ao salvar informações do usuário.');
     } finally {
       setIsSaving(false);
     }
@@ -88,11 +200,11 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const handleDelete = async (username: string) => {
     if (confirm(`Tem certeza que deseja remover o usuário "${username}"?`)) {
       setIsSaving(true);
-      setMsg(`Removendo e sincronizando exclusão do usuário "${username}"...`);
+      setMsg(`Removendo usuário "${username}"...`);
       try {
         const updated = await deleteUser(username);
         setUsers(updated);
-        setMsg(`Usuário "${username}" removido e sincronizado com a planilha.`);
+        setMsg(`Usuário "${username}" removido.`);
       } catch (err) {
         setMsg('Erro ao remover usuário.');
       } finally {
@@ -104,97 +216,9 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const appsScriptCode = `function doGet(e) { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
 
-function getTargetSheet() {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (ss) return ss.getActiveSheet();
-  } catch(e) {}
-  return null;
-}
-
 function handleRequest(e) {
-  var params = {};
-  if (e && e.parameter) {
-    for (var k in e.parameter) {
-      params[k] = e.parameter[k];
-    }
-  }
-  if (e && e.postData && e.postData.contents) {
-    try {
-      var json = JSON.parse(e.postData.contents);
-      for (var k in json) { params[k] = json[k]; }
-    } catch(err) {}
-  }
-
-  var action = params.action || '';
-  var sheet = getTargetSheet();
-
-  if (!sheet) {
-    return ContentService.createTextOutput(JSON.stringify({ error: 'Nenhuma planilha ativa encontrada' }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  var data = sheet.getDataRange().getValues();
-  if (data.length === 0) {
-    sheet.appendRow(['usuario', 'senha', 'role', 'grupoEconomico']);
-    data = sheet.getDataRange().getValues();
-  }
-
-  if (action === 'getUsers') {
-    var users = [];
-    var startRow = (data.length > 0 && String(data[0][0]).toLowerCase().indexOf('user') >= 0) ? 1 : 0;
-    for (var i = startRow; i < data.length; i++) {
-      if (data[i][0]) {
-        users.push({
-          username: String(data[i][0]).trim(),
-          password: String(data[i][1] || '123').trim(),
-          role: String(data[i][2] || 'Colaborador').trim(),
-          grupoEconomico: String(data[i][3] || '').trim()
-        });
-      }
-    }
-    return ContentService.createTextOutput(JSON.stringify(users))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  if (action === 'saveUser') {
-    var username = String(params.username || params.usuario || params.user || '').trim();
-    var password = String(params.password || params.senha || '123').trim();
-    var role = String(params.role || params.nivel || 'Colaborador').trim();
-    var grupo = String(params.grupoEconomico || params.grupo || '').trim();
-
-    if (username) {
-      var foundRow = -1;
-      for (var i = 0; i < data.length; i++) {
-        if (String(data[i][0]).trim().toLowerCase() === username.toLowerCase()) {
-          foundRow = i + 1;
-          break;
-        }
-      }
-      if (foundRow > 0) {
-        sheet.getRange(foundRow, 1, 1, 4).setValues([[username, password, role, grupo]]);
-      } else {
-        sheet.appendRow([username, password, role, grupo]);
-      }
-    }
-    return ContentService.createTextOutput(JSON.stringify({ status: 'ok', action: 'saveUser', username: username }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  if (action === 'deleteUser') {
-    var username = String(params.username || params.usuario || params.user || '').trim();
-    if (username) {
-      for (var i = data.length - 1; i >= 0; i--) {
-        if (String(data[i][0]).trim().toLowerCase() === username.toLowerCase()) {
-          sheet.deleteRow(i + 1);
-        }
-      }
-    }
-    return ContentService.createTextOutput(JSON.stringify({ status: 'ok', action: 'deleteUser', username: username }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  return ContentService.createTextOutput(JSON.stringify({ error: 'invalid action', receivedParams: params }))
+  var params = e ? e.parameter || {} : {};
+  return ContentService.createTextOutput(JSON.stringify({ status: 'ok', params: params }))
     .setMimeType(ContentService.MimeType.JSON);
 }`;
 
@@ -206,7 +230,7 @@ function handleRequest(e) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fadeIn">
-      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-slate-200 flex flex-col">
+      <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-hidden shadow-2xl border border-slate-200 flex flex-col">
         
         {/* Modal Header */}
         <div className="bg-[#401669] text-white p-6 flex items-center justify-between">
@@ -215,8 +239,8 @@ function handleRequest(e) {
               <Users className="w-5 h-5 text-purple-200" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Gestão de Usuários e Permissões</h2>
-              <p className="text-xs text-purple-200">Painel do Administrador METARH</p>
+              <h2 className="text-lg font-bold">Painel de Gestão de Usuários e Permissões</h2>
+              <p className="text-xs text-purple-200">Administração METARH & Controle de Acesso</p>
             </div>
           </div>
 
@@ -230,10 +254,15 @@ function handleRequest(e) {
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          
           {msg && (
-            <div className={`p-3 border text-xs font-semibold rounded-xl flex items-center gap-2 ${
-              isSaving ? 'bg-purple-50 border-purple-200 text-purple-900' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-            }`}>
+            <div
+              className={`p-3 border text-xs font-semibold rounded-xl flex items-center gap-2 ${
+                isSaving
+                  ? 'bg-purple-50 border-purple-200 text-purple-900'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              }`}
+            >
               {isSaving ? (
                 <Loader2 className="w-4 h-4 text-[#401669] animate-spin flex-shrink-0" />
               ) : (
@@ -243,14 +272,35 @@ function handleRequest(e) {
             </div>
           )}
 
-          {/* Add New User Form */}
+          {/* Form Section: Add or Edit User */}
           <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
-            <h3 className="text-sm font-bold text-[#401669] mb-3 flex items-center gap-2">
-              <UserPlus className="w-4 h-4 text-[#9c3aff]" />
-              Incluir Novo Usuário
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-[#401669] flex items-center gap-2">
+                {editingUser ? (
+                  <>
+                    <Edit2 className="w-4 h-4 text-[#9c3aff]" />
+                    Editar Usuário: <span className="underline">{editingUser.username}</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4 text-[#9c3aff]" />
+                    Cadastrar Novo Usuário
+                  </>
+                )}
+              </h3>
 
-            <form onSubmit={handleAddUser} className="space-y-4">
+              {editingUser && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="text-xs text-rose-600 hover:underline font-bold"
+                >
+                  Cancelar Edição
+                </button>
+              )}
+            </div>
+
+            <form onSubmit={handleSubmitForm} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -259,9 +309,9 @@ function handleRequest(e) {
                   <input
                     type="text"
                     placeholder="Ex: joao.silva"
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    disabled={isSaving}
+                    value={formUsername}
+                    onChange={(e) => setFormUsername(e.target.value)}
+                    disabled={isSaving || (editingUser !== null && editingUser.username === 'admin')}
                     className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#9c3aff] disabled:opacity-50"
                   />
                 </div>
@@ -273,52 +323,143 @@ function handleRequest(e) {
                   <input
                     type="text"
                     placeholder="Ex: 123456"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
                     disabled={isSaving}
                     className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#9c3aff] disabled:opacity-50"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Nível de Acesso
-                  </label>
-                  <select
-                    value={newRole}
-                    onChange={(e) => setNewRole(e.target.value as UserRole)}
-                    disabled={isSaving}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#9c3aff] font-medium disabled:opacity-50"
-                  >
-                    <option value="Colaborador">Colaborador (Acesso Completo)</option>
-                    <option value="Administrador">Administrador (Poderes Totais + Usuários)</option>
-                    <option value="Cliente">Cliente (Apenas seu Grupo Econômico)</option>
-                  </select>
-                </div>
-
-                {newRole === 'Cliente' && (
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Grupo Econômico Atribuído
-                    </label>
-                    <select
-                      value={newGrupo}
-                      onChange={(e) => setNewGrupo(e.target.value)}
-                      disabled={isSaving}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#9c3aff] font-medium disabled:opacity-50"
-                    >
-                      <option value="">-- Selecione o Grupo Econômico --</option>
-                      {availableGrupos.map((g) => (
-                        <option key={g} value={g}>
-                          {g}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Perfil de Acesso / Nível de Permissão
+                </label>
+                <select
+                  value={formRole}
+                  onChange={(e) => setFormRole(e.target.value as UserRole)}
+                  disabled={isSaving}
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#9c3aff] font-bold disabled:opacity-50"
+                >
+                  <option value="Administrador">Administrador (Visão geral e total + Gestão de Usuários)</option>
+                  <option value="Colaborador">Colaborador (Visualizações padrões atuais)</option>
+                  <option value="Cliente">Cliente (Filtro restrito por Grupo Econômico ou CNPJ/Cliente)</option>
+                  <option value="RH">RH (Acesso exclusivo à aba Banco de Talentos)</option>
+                  <option value="Comercial">Comercial (Análise de Carteira &amp; Alertas de Ativos)</option>
+                  <option value="Gerencial Comercial">Gerencial Comercial (Gestão da Equipe &amp; Atribuição de Inativos)</option>
+                </select>
               </div>
+
+              {/* Multi-selection of Economic Groups & Clients */}
+              {formRole !== 'Administrador' && (
+                <div className="space-y-3">
+                  {/* Grupos Econômicos Selection with Search Filter */}
+                  <div className="space-y-2 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-[#401669]" />
+                        <span>Grupos Econômicos Atribuídos</span>
+                        {selectedGrupos.length > 0 && (
+                          <span className="px-2 py-0.5 bg-purple-100 text-[#401669] rounded-full text-[10px] font-extrabold">
+                            {selectedGrupos.length} selecionados
+                          </span>
+                        )}
+                      </label>
+
+                      <div className="relative">
+                        <Search className="w-3 h-3 text-slate-400 absolute left-2 top-2" />
+                        <input
+                          type="text"
+                          placeholder="Filtrar grupo..."
+                          value={grupoSearch}
+                          onChange={(e) => setGrupoSearch(e.target.value)}
+                          className="pl-7 pr-2 py-1 text-[10px] bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#9c3aff]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pt-1 pr-1">
+                      {availableGrupos
+                        .filter((g) => !grupoSearch || g.toLowerCase().includes(grupoSearch.toLowerCase()))
+                        .map((g) => {
+                          const isSel = selectedGrupos.includes(g);
+                          return (
+                            <button
+                              type="button"
+                              key={g}
+                              onClick={() => toggleGrupoSelection(g)}
+                              className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border cursor-pointer transition-all ${
+                                isSel
+                                  ? 'bg-purple-600 border-purple-600 text-white shadow-xs'
+                                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              {isSel ? '✓ ' : '+ '}
+                              {g}
+                            </button>
+                          );
+                        })}
+                    </div>
+                    <p className="text-[10px] text-slate-500 italic">
+                      * Dica: Ao selecionar um Grupo Econômico, todos os CNPJs do grupo são vinculados.
+                    </p>
+                  </div>
+
+                  {/* Clientes / CNPJs Selection with Search Filter */}
+                  <div className="space-y-2 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-[#401669]" />
+                        <span>Clientes / CNPJs Específicos (Sem ou Com Grupo)</span>
+                        {selectedClientes.length > 0 && (
+                          <span className="px-2 py-0.5 bg-amber-100 text-amber-900 rounded-full text-[10px] font-extrabold">
+                            {selectedClientes.length} selecionados
+                          </span>
+                        )}
+                      </label>
+
+                      <div className="relative">
+                        <Search className="w-3 h-3 text-slate-400 absolute left-2 top-2" />
+                        <input
+                          type="text"
+                          placeholder="Filtrar cliente/CNPJ..."
+                          value={clientSearch}
+                          onChange={(e) => setClientSearch(e.target.value)}
+                          className="pl-7 pr-2 py-1 text-[10px] bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#9c3aff]"
+                        />
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-slate-500">
+                      Útil para clientes independentes que não pertencem a um Grupo Econômico cadastrado.
+                    </p>
+
+                    <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pt-1 pr-1">
+                      {availableClientes
+                        .filter((c) => !clientSearch || c.toLowerCase().includes(clientSearch.toLowerCase()))
+                        .slice(0, 80)
+                        .map((c) => {
+                          const isSel = selectedClientes.includes(c);
+                          return (
+                            <button
+                              type="button"
+                              key={c}
+                              onClick={() => toggleClienteSelection(c)}
+                              className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border cursor-pointer transition-all ${
+                                isSel
+                                  ? 'bg-amber-600 border-amber-600 text-white shadow-xs'
+                                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              {isSel ? '✓ ' : '+ '}
+                              {c}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="submit"
@@ -328,23 +469,25 @@ function handleRequest(e) {
                 {isSaving ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Sincronizando com a Planilha...</span>
+                    <span>Salvando Alterações...</span>
                   </>
                 ) : (
                   <>
-                    <UserPlus className="w-4 h-4" />
-                    <span>Cadastrar Usuário</span>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{editingUser ? 'Salvar Edição de Usuário' : 'Cadastrar Usuário'}</span>
                   </>
                 )}
               </button>
             </form>
           </div>
 
-          {/* User List Table */}
+          {/* User List & Logs Section */}
           <div>
-            <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-              <Shield className="w-4 h-4 text-[#401669]" />
-              Usuários Cadastrados ({users.length})
+            <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[#401669]" />
+                Usuários Cadastrados no Sistema ({users.length})
+              </span>
             </h3>
 
             <div className="border border-slate-200 rounded-2xl overflow-hidden">
@@ -352,97 +495,150 @@ function handleRequest(e) {
                 <thead className="bg-slate-100 text-slate-700 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
                   <tr>
                     <th className="p-3">Usuário</th>
-                    <th className="p-3">Nível</th>
-                    <th className="p-3">Grupo Econômico</th>
-                    <th className="p-3 text-right">Ação</th>
+                    <th className="p-3">Perfil de Acesso</th>
+                    <th className="p-3">Grupos / Carteira</th>
+                    <th className="p-3 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {users.map((u) => (
-                    <tr key={u.username} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-3 font-bold text-slate-900 flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-purple-100 text-[#401669] flex items-center justify-center text-[10px] font-black">
-                          {u.username.substring(0, 2).toUpperCase()}
-                        </span>
-                        {u.username}
-                      </td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          u.role === 'Administrador' ? 'bg-purple-100 text-[#401669]' :
-                          u.role === 'Cliente' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
-                        }`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="p-3 text-slate-600 font-medium">
-                        {u.role === 'Cliente' ? (u.grupoEconomico || 'Não atribuído') : 'Global (Todos os Grupos)'}
-                      </td>
-                      <td className="p-3 text-right">
-                        <button
-                          onClick={() => handleDelete(u.username)}
-                          disabled={u.username === 'admin' || isSaving}
-                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-all disabled:opacity-30 cursor-pointer"
-                          title="Remover Usuário"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
+                    <React.Fragment key={u.username}>
+                      <tr className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 font-bold text-slate-900 flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-purple-100 text-[#401669] flex items-center justify-center text-[10px] font-black">
+                            {u.username.substring(0, 2).toUpperCase()}
+                          </span>
+                          {u.username}
+                        </td>
+
+                        <td className="p-3">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              u.role === 'Administrador'
+                                ? 'bg-purple-100 text-[#401669]'
+                                : u.role === 'Gerencial Comercial'
+                                ? 'bg-indigo-100 text-indigo-900'
+                                : u.role === 'Comercial'
+                                ? 'bg-amber-100 text-amber-900'
+                                : u.role === 'RH'
+                                ? 'bg-emerald-100 text-emerald-900'
+                                : u.role === 'Cliente'
+                                ? 'bg-blue-100 text-blue-900'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {u.role}
+                          </span>
+                        </td>
+
+                        <td className="p-3 text-slate-600 font-medium">
+                          {u.role === 'Administrador' ? (
+                            <span className="text-slate-500 font-semibold text-[11px]">Acesso Geral Master</span>
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              {u.gruposEconomicos && u.gruposEconomicos.length > 0 && (
+                                <span className="text-[10px] font-bold text-purple-900 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200 inline-block">
+                                  Grupos ({u.gruposEconomicos.length}): {u.gruposEconomicos.slice(0, 2).join(', ')}{u.gruposEconomicos.length > 2 ? '...' : ''}
+                                </span>
+                              )}
+                              {u.clientesAtribuidos && u.clientesAtribuidos.length > 0 && (
+                                <span className="text-[10px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 inline-block">
+                                  Clientes ({u.clientesAtribuidos.length}): {u.clientesAtribuidos.slice(0, 2).join(', ')}{u.clientesAtribuidos.length > 2 ? '...' : ''}
+                                </span>
+                              )}
+                              {(!u.gruposEconomicos || u.gruposEconomicos.length === 0) &&
+                                (!u.clientesAtribuidos || u.clientesAtribuidos.length === 0) && (
+                                  <span className="text-slate-400 text-[11px] italic">
+                                    {u.grupoEconomico ? `Grupo: ${u.grupoEconomico}` : 'Nenhum atrelado'}
+                                  </span>
+                                )}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="p-3 text-right space-x-1">
+                          {/* Logs button */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedLogsUser(expandedLogsUser === u.username ? null : u.username)
+                            }
+                            className="p-1.5 text-purple-700 hover:bg-purple-100 rounded-lg transition-all cursor-pointer"
+                            title="Ver Histórico de Logs do Usuário"
+                          >
+                            <History className="w-4 h-4" />
+                          </button>
+
+                          {/* Edit button */}
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(u)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                            title="Editar Informações do Usuário"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+
+                          {/* Delete button */}
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(u.username)}
+                            disabled={u.username.toLowerCase() === currentUser.username.toLowerCase() || isSaving}
+                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all disabled:opacity-30 cursor-pointer"
+                            title={
+                              u.username.toLowerCase() === currentUser.username.toLowerCase()
+                                ? 'Você não pode excluir sua própria conta em uso'
+                                : 'Remover Usuário'
+                            }
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* Expandable User Audit Log Drawer */}
+                      {expandedLogsUser === u.username && (
+                        <tr>
+                          <td colSpan={4} className="bg-slate-900 text-slate-100 p-4 text-xs">
+                            <div className="font-bold text-purple-300 flex items-center justify-between mb-2">
+                              <span>Histórico de Auditoria &amp; Permissões de "{u.username}"</span>
+                              <button
+                                onClick={() => setExpandedLogsUser(null)}
+                                className="text-slate-400 hover:text-white"
+                              >
+                                Fechar
+                              </button>
+                            </div>
+
+                            {!u.logs || u.logs.length === 0 ? (
+                              <p className="text-slate-400 italic">Nenhum log registrado até o momento.</p>
+                            ) : (
+                              <div className="space-y-2 max-h-40 overflow-y-auto">
+                                {u.logs.map((log) => (
+                                  <div
+                                    key={log.id}
+                                    className="p-2 bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-mono space-y-0.5"
+                                  >
+                                    <div className="text-purple-300 font-bold flex justify-between">
+                                      <span>{log.action}</span>
+                                      <span className="text-slate-400 text-[10px]">
+                                        {new Date(log.timestamp).toLocaleString('pt-BR')}
+                                      </span>
+                                    </div>
+                                    <p className="text-slate-200">{log.details}</p>
+                                    <p className="text-slate-400 text-[10px]">Autor: {log.author}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
-
-          {/* Apps Script Helper Section */}
-          <div className="pt-2 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={() => setShowScriptInfo(!showScriptInfo)}
-              className="text-xs font-bold text-[#401669] hover:text-[#7823ce] flex items-center gap-2 cursor-pointer py-1"
-            >
-              <Code2 className="w-4 h-4 text-[#9c3aff]" />
-              <span>{showScriptInfo ? 'Ocultar Instruções do Apps Script' : 'Instruções do Google Apps Script (Código para Planilha)'}</span>
-            </button>
-
-            {showScriptInfo && (
-              <div className="mt-3 bg-slate-900 text-slate-100 p-4 rounded-2xl text-[11px] font-mono space-y-3 relative">
-                <div className="flex items-center justify-between text-slate-400 font-sans text-xs pb-2 border-b border-slate-800">
-                  <span>Código para Google Sheets (Extensões &gt; Apps Script)</span>
-                  <button
-                    onClick={handleCopyScript}
-                    className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all"
-                  >
-                    {copiedScript ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedScript ? 'Copiado!' : 'Copiar Código'}</span>
-                  </button>
-                </div>
-                <p className="text-slate-400 font-sans text-xs leading-relaxed">
-                  Copie este código para o seu projeto no Apps Script na planilha (Extensões &gt; Apps Script):
-                </p>
-                <pre className="overflow-x-auto p-3 bg-slate-950 rounded-xl text-purple-200 text-[10px] leading-relaxed max-h-48 overflow-y-auto">
-                  {appsScriptCode}
-                </pre>
-
-                {/* Important step alert */}
-                <div className="bg-amber-500/20 border border-amber-500/40 rounded-xl p-3 font-sans text-amber-200 text-xs space-y-1.5">
-                  <div className="font-bold text-amber-300 flex items-center gap-1.5">
-                    <Shield className="w-4 h-4 text-amber-400" />
-                    <span>Passo Obrigatório ao Salvar no Google Apps Script:</span>
-                  </div>
-                  <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[11px] leading-relaxed">
-                    <li>Copie o código e cole no Editor do Apps Script.</li>
-                    <li>Clique no botão **Implantar** (canto superior direito) &gt; **Gerenciar implantações**.</li>
-                    <li>Clique no ícone de **Lápis (Editar)** ao lado da implantação Web App.</li>
-                    <li>No campo **Versão**, selecione **"Nova Versão"** (New Version).</li>
-                    <li>Clique em **Implantar** (Deploy).</li>
-                  </ol>
-                  <p className="text-[10px] text-amber-200/80 italic font-mono pt-1">
-                    *Atenção: Se não selecionar "Nova Versão", o Google manterá o código antigo ativo e nenhuma alteração funcionará!
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
 
         </div>

@@ -1,10 +1,35 @@
-import { User, UserRole } from '../types';
+import { User, UserRole, UserLog } from '../types';
 
 const APPS_SCRIPT_USER_URL = 'https://script.google.com/macros/s/AKfycbxvEbfCjw5prUCltIj5KWGzilUXsp-tu4fIA_ZYvr5WWJ0k4OoJL7SLOP1ZrnSCejV8/exec';
 const LOCAL_STORAGE_KEY = 'metarh_users_v2';
 const CURRENT_USER_KEY = 'metarh_current_user_v2';
+const DELETED_USERS_KEY = 'metarh_deleted_users_v2';
 
-// Initial default accounts
+const INITIAL_TEST_USERNAMES = ['admin', 'colaborador', 'cliente', 'rh_recrutamento', 'comercial_carlos', 'head_comercial'];
+
+const getDeletedUsers = (): Set<string> => {
+  try {
+    const stored = localStorage.getItem(DELETED_USERS_KEY);
+    if (stored) {
+      const arr = JSON.parse(stored);
+      if (Array.isArray(arr)) {
+        return new Set(arr.map((s: string) => s.toLowerCase()));
+      }
+    }
+  } catch (e) {
+    console.error(e);
+  }
+  // Initialize with test accounts deleted by default
+  const initialSet = new Set(INITIAL_TEST_USERNAMES);
+  saveDeletedUsers(initialSet);
+  return initialSet;
+};
+
+const saveDeletedUsers = (set: Set<string>) => {
+  localStorage.setItem(DELETED_USERS_KEY, JSON.stringify(Array.from(set)));
+};
+
+// Initial default accounts - only Master Admin Leandro
 const DEFAULT_USERS: User[] = [
   {
     id: 'admin_leandro',
@@ -12,33 +37,21 @@ const DEFAULT_USERS: User[] = [
     password: '@Pi#101412',
     role: 'Administrador',
     createdAt: new Date().toISOString(),
+    logs: [
+      {
+        id: '1',
+        timestamp: new Date().toISOString(),
+        author: 'Sistema',
+        action: 'Criação de Conta',
+        details: 'Conta Master Administrador ativada.',
+      },
+    ],
   },
-  {
-    id: '1',
-    username: 'admin',
-    password: '123',
-    role: 'Administrador',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    username: 'colaborador',
-    password: '123',
-    role: 'Colaborador',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    username: 'cliente',
-    password: '123',
-    role: 'Cliente',
-    grupoEconomico: 'VALE S/A',
-    createdAt: new Date().toISOString(),
-  }
 ];
 
 // Helper to get local users synchronously without triggering remote fetches
 const getLocalUsers = (): User[] => {
+  const deletedUsers = getDeletedUsers();
   let list: User[] = [];
   try {
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -56,9 +69,12 @@ const getLocalUsers = (): User[] => {
     list = DEFAULT_USERS;
   }
 
-  // Ensure master admin Leandro exists
+  // Filter out any explicitly deleted users
+  list = list.filter((u) => !deletedUsers.has(u.username.toLowerCase()));
+
+  // Ensure master admin Leandro exists unless explicitly removed
   const hasLeandro = list.some((u) => u.username.toLowerCase() === 'leandro');
-  if (!hasLeandro) {
+  if (!hasLeandro && !deletedUsers.has('leandro')) {
     list.unshift({
       id: 'admin_leandro',
       username: 'Leandro',
@@ -72,7 +88,20 @@ const getLocalUsers = (): User[] => {
   return list;
 };
 
+const parseArrayField = (val: any): string[] => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.map((x) => String(x).trim()).filter(Boolean);
+  if (typeof val === 'string') {
+    return val
+      .split(/[,;|]/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
 export const getUsers = async (): Promise<User[]> => {
+  const deletedUsers = getDeletedUsers();
   const localUsers = getLocalUsers();
 
   try {
@@ -111,44 +140,61 @@ export const getUsers = async (): Promise<User[]> => {
         .filter((u: any) => {
           if (!u) return false;
           const uname = String(u.username || u.usuario || u.user || '').trim().toLowerCase();
-          // Filter out empty or header rows
-          return uname !== '' && uname !== 'usuário' && uname !== 'usuario' && uname !== 'username';
+          // Filter out empty, header, or deleted rows
+          return (
+            uname !== '' &&
+            uname !== 'usuário' &&
+            uname !== 'usuario' &&
+            uname !== 'username' &&
+            !deletedUsers.has(uname)
+          );
         })
-        .map((u: any) => ({
-          id: String(u.id || u.username || u.usuario || Date.now()),
-          username: String(u.username || u.usuario || u.user).trim(),
-          password: String(u.password || u.senha || '123').trim(),
-          role: (u.role || u.nivel || u.nivelAcesso || 'Colaborador') as UserRole,
-          grupoEconomico: u.grupoEconomico || u.grupo || '',
-          createdAt: u.createdAt || new Date().toISOString(),
-        }));
+        .map((u: any) => {
+          const grupos = parseArrayField(
+            u.gruposEconomicos || u.gruposAtribuidos || u.grupos || u.grupoEconomico || u.grupo
+          );
+          const clientes = parseArrayField(
+            u.clientesAtribuidos || u.clientes || u.cliente || u.clientesCarteira || u.carteira
+          );
+          const cnpjs = parseArrayField(u.cnpjsAtribuidos || u.cnpjs);
+
+          return {
+            id: String(u.id || u.username || u.usuario || Date.now()),
+            username: String(u.username || u.usuario || u.user).trim(),
+            password: String(u.password || u.senha || '123').trim(),
+            role: (u.role || u.nivel || u.nivelAcesso || 'Colaborador') as UserRole,
+            grupoEconomico: u.grupoEconomico || u.grupo || (grupos[0] || ''),
+            gruposEconomicos: grupos.length > 0 ? grupos : u.grupoEconomico ? [u.grupoEconomico] : [],
+            clientesAtribuidos: clientes,
+            cnpjsAtribuidos: cnpjs,
+            createdAt: u.createdAt || new Date().toISOString(),
+          };
+        });
 
       // Map to deduplicate by username
       const userMap = new Map<string, User>();
 
-      // Load DEFAULT_USERS
+      // 1. DEFAULT_USERS
       for (const u of DEFAULT_USERS) {
-        userMap.set(u.username.toLowerCase(), u);
-      }
-
-      // Load localUsers
-      for (const u of localUsers) {
-        userMap.set(u.username.toLowerCase(), u);
-      }
-
-      // Merge remoteUsers (overwriting with sheet data)
-      for (const u of formattedRemote) {
-        if (u.username.toLowerCase() === 'leandro') {
-          // preserve admin_leandro password if default
-          userMap.set('leandro', {
-            id: 'admin_leandro',
-            username: 'Leandro',
-            password: u.password && u.password !== 'Senha' ? u.password : '@Pi#101412',
-            role: 'Administrador',
-            createdAt: u.createdAt || new Date().toISOString(),
-          });
-        } else {
+        if (!deletedUsers.has(u.username.toLowerCase())) {
           userMap.set(u.username.toLowerCase(), u);
+        }
+      }
+
+      // 2. Merge remote users (without overriding local changes)
+      for (const u of formattedRemote) {
+        const key = u.username.toLowerCase();
+        if (!deletedUsers.has(key)) {
+          const existing = userMap.get(key);
+          userMap.set(key, { ...u, ...existing });
+        }
+      }
+
+      // 3. Merge localUsers with HIGHEST PRIORITY (preserves edited roles, grupos, clientes, logs)
+      for (const u of localUsers) {
+        const key = u.username.toLowerCase();
+        if (!deletedUsers.has(key)) {
+          userMap.set(key, u);
         }
       }
 
@@ -163,7 +209,41 @@ export const getUsers = async (): Promise<User[]> => {
   return localUsers;
 };
 
+export const addUserLog = async (
+  username: string,
+  author: string,
+  action: string,
+  details: string
+): Promise<User[]> => {
+  const users = getLocalUsers();
+  const idx = users.findIndex((u) => u.username.toLowerCase() === username.toLowerCase());
+  if (idx >= 0) {
+    const targetUser = users[idx];
+    const newLog: UserLog = {
+      id: String(Date.now()),
+      timestamp: new Date().toISOString(),
+      author,
+      action,
+      details,
+    };
+    const updatedUser: User = {
+      ...targetUser,
+      logs: [newLog, ...(targetUser.logs || [])],
+      updatedAt: new Date().toISOString(),
+    };
+    return saveUser(updatedUser);
+  }
+  return users;
+};
+
 export const saveUser = async (user: User): Promise<User[]> => {
+  // Remove from deleted list if saving/restoring
+  const deletedUsers = getDeletedUsers();
+  if (deletedUsers.has(user.username.toLowerCase())) {
+    deletedUsers.delete(user.username.toLowerCase());
+    saveDeletedUsers(deletedUsers);
+  }
+
   const users = getLocalUsers();
   const existingIdx = users.findIndex((u) => u.username.toLowerCase() === user.username.toLowerCase());
 
@@ -195,18 +275,29 @@ export const saveUser = async (user: User): Promise<User[]> => {
     params.append('role', user.role);
     params.append('nivel', user.role);
     params.append('nivelAcesso', user.role);
-    params.append('grupoEconomico', user.grupoEconomico || '');
-    params.append('grupo', user.grupoEconomico || '');
+    const clientesList = user.clientesAtribuidos || [];
+    const gruposList = user.gruposEconomicos || (user.grupoEconomico ? [user.grupoEconomico] : []);
+    const clientesStr = clientesList.join(', ');
+    const gruposStr = gruposList.join(', ');
+
+    params.append('grupoEconomico', user.grupoEconomico || (gruposList[0] || ''));
+    params.append('grupo', user.grupoEconomico || (gruposList[0] || ''));
+    params.append('gruposEconomicos', gruposStr);
+    params.append('gruposAtribuidos', gruposStr);
+    params.append('grupos', gruposStr);
+    params.append('clientesAtribuidos', clientesStr);
+    params.append('clientes', clientesStr);
+    params.append('cliente', clientesStr);
+    params.append('carteira', clientesStr);
+    params.append('clientesCarteira', clientesStr);
     params.append('t', String(Date.now()));
 
     const queryString = params.toString();
     const fullUrl = `${APPS_SCRIPT_USER_URL}?${queryString}`;
 
-    // 1. Image Ping Fallback (Guarantees GET execution regardless of CORS/redirect restrictions)
     const img = new Image();
     img.src = fullUrl;
 
-    // 2. Fetch GET & POST to both /api/users and Google Apps Script URL
     Promise.allSettled([
       fetch(`/api/users?${queryString}`).catch(() => {}),
       fetch(fullUrl, { method: 'GET', mode: 'no-cors' }),
@@ -216,11 +307,7 @@ export const saveUser = async (user: User): Promise<User[]> => {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: queryString,
       }),
-    ]).then(() => {
-      setTimeout(() => {
-        getUsers().catch(() => {});
-      }, 1000);
-    }).catch(() => {});
+    ]).catch(() => {});
   } catch (e) {
     console.warn('Could not post to Apps Script user DB:', e);
   }
@@ -229,6 +316,11 @@ export const saveUser = async (user: User): Promise<User[]> => {
 };
 
 export const deleteUser = async (username: string): Promise<User[]> => {
+  // Register in deletedUsers set so getUsers() never resurrects this user
+  const deletedUsers = getDeletedUsers();
+  deletedUsers.add(username.toLowerCase());
+  saveDeletedUsers(deletedUsers);
+
   const users = getLocalUsers();
   const updatedList = users.filter((u) => u.username.toLowerCase() !== username.toLowerCase());
 
@@ -247,11 +339,9 @@ export const deleteUser = async (username: string): Promise<User[]> => {
     const queryString = params.toString();
     const fullUrl = `${APPS_SCRIPT_USER_URL}?${queryString}`;
 
-    // 1. Image Ping Fallback
     const img = new Image();
     img.src = fullUrl;
 
-    // 2. Fetch GET & POST
     Promise.allSettled([
       fetch(`/api/users?${queryString}`).catch(() => {}),
       fetch(fullUrl, { method: 'GET', mode: 'no-cors' }),
@@ -261,11 +351,7 @@ export const deleteUser = async (username: string): Promise<User[]> => {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: queryString,
       }),
-    ]).then(() => {
-      setTimeout(() => {
-        getUsers().catch(() => {});
-      }, 1000);
-    }).catch(() => {});
+    ]).catch(() => {});
   } catch (e) {
     console.warn('Could not delete user on Apps Script user DB:', e);
   }

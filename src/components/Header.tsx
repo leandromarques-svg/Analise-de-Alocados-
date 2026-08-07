@@ -80,14 +80,24 @@ export const Header: React.FC<HeaderProps> = ({
                     <span className="font-bold">{currentUser.username}</span>
                     <span className={`px-1.5 py-0.2 text-[9px] font-black rounded-md uppercase ${
                       currentUser.role === 'Administrador' ? 'bg-[#401669] text-white' :
-                      currentUser.role === 'Cliente' ? 'bg-amber-100 text-amber-900' : 'bg-purple-100 text-[#401669]'
+                      currentUser.role === 'Gerencial Comercial' ? 'bg-indigo-600 text-white' :
+                      currentUser.role === 'Comercial' ? 'bg-amber-600 text-white' :
+                      currentUser.role === 'RH' ? 'bg-emerald-600 text-white' :
+                      currentUser.role === 'Cliente' ? 'bg-blue-600 text-white' : 'bg-purple-100 text-[#401669]'
                     }`}>
                       {currentUser.role}
                     </span>
                   </div>
-                  {currentUser.role === 'Cliente' && currentUser.grupoEconomico && (
+                  {currentUser.role === 'Cliente' && (currentUser.gruposEconomicos?.length || currentUser.grupoEconomico) && (
                     <p className="text-[10px] text-[#78549e] truncate max-w-[140px]">
-                      Grupo: {currentUser.grupoEconomico}
+                      {currentUser.gruposEconomicos?.length
+                        ? `Grupos (${currentUser.gruposEconomicos.length})`
+                        : `Grupo: ${currentUser.grupoEconomico}`}
+                    </p>
+                  )}
+                  {currentUser.role === 'Comercial' && currentUser.clientesAtribuidos?.length && (
+                    <p className="text-[10px] text-[#78549e] truncate max-w-[140px]">
+                      Carteira: {currentUser.clientesAtribuidos.length} clientes
                     </p>
                   )}
                 </div>
