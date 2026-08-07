@@ -453,7 +453,7 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
               className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-[#9c3aff]"
             >
               <option value="all">Todos os Comerciais</option>
-              <option value="unassigned">Sem Proprietário ({unassignedCount})</option>
+              <option value="unassigned">Apenas sem comercial atribuído ({unassignedCount})</option>
               {commercialReps.map((r) => (
                 <option key={r.username} value={r.username}>
                   Executivo: {r.username}
@@ -472,7 +472,7 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
               }`}
             >
               <Clock className="w-3.5 h-3.5" />
-              <span>Somente Inativos &gt; 1 Ano</span>
+              <span>Sem Novas Solicitações &gt; 1 Ano</span>
             </button>
           </div>
         </div>
@@ -521,7 +521,7 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
                       {client.isInactiveOver1Year ? (
                         <span className="px-2.5 py-1 bg-rose-100 text-rose-800 border border-rose-200 rounded-lg text-[10px] font-bold inline-flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3 text-rose-600" />
-                          Inativo (&gt; 1 Ano)
+                          Sem Novas Solicitações (&gt; 1 Ano)
                         </span>
                       ) : (
                         <span className="px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-lg text-[10px] font-bold">

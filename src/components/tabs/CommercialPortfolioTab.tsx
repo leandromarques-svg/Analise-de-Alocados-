@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Funcionario, User } from '../../types';
-import { saveUser, setCurrentUser, saveCommercialAssignments, getCommercialAssignments } from '../../services/userService';
+import { saveUser, setCurrentUser, saveCommercialAssignments, getCommercialAssignments, getUsers } from '../../services/userService';
 import {
   analyzePortfolioForPeriod,
   saveClientAssignment,
@@ -52,10 +52,41 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
   const [grupoSearchTerm, setGrupoSearchTerm] = useState('');
   const [activeSelectionTab, setActiveSelectionTab] = useState<'grupos' | 'clientes'>('grupos');
   const [isSelectionExpanded, setIsSelectionExpanded] = useState<boolean>(false);
-  // Calculate initial portfolio assigned clients based on user profile (clientesAtribuidos and gruposEconomicos)
+
+  // Gestor / Admin rep selection state
+  const isGestorOrAdmin =
+    currentUser.role === 'Gerencial Comercial' ||
+    currentUser.role === 'Administrador' ||
+    currentUser.role === 'RH';
+
+  const [commercialUsers, setCommercialUsers] = useState<User[]>([]);
+  const [selectedRepUsername, setSelectedRepUsername] = useState<string>(currentUser.username);
+
+  // Load commercial reps list for Gestor/Admin
+  useEffect(() => {
+    if (isGestorOrAdmin) {
+      getUsers().then((users) => {
+        const reps = users.filter(
+          (u) =>
+            u.role === 'Comercial' ||
+            u.role === 'Gerencial Comercial' ||
+            u.role === 'Administrador'
+        );
+        setCommercialUsers(reps);
+      });
+    }
+  }, [isGestorOrAdmin]);
+
+  // Target user profile being inspected
+  const targetUser = useMemo(() => {
+    if (selectedRepUsername === currentUser.username) return currentUser;
+    return commercialUsers.find((u) => u.username === selectedRepUsername) || currentUser;
+  }, [selectedRepUsername, currentUser, commercialUsers]);
+
+  // Calculate initial portfolio assigned clients based on selected user profile
   const initialClients = useMemo(() => {
-    const set = new Set<string>(currentUser.clientesAtribuidos || []);
-    const groups = currentUser.gruposEconomicos || (currentUser.grupoEconomico ? [currentUser.grupoEconomico] : []);
+    const set = new Set<string>(targetUser.clientesAtribuidos || []);
+    const groups = targetUser.gruposEconomicos || (targetUser.grupoEconomico ? [targetUser.grupoEconomico] : []);
     groups.forEach((groupName) => {
       if (!groupName) return;
       const gLower = groupName.toLowerCase().trim();
@@ -67,18 +98,18 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
       });
     });
     return Array.from(set);
-  }, [currentUser, data]);
+  }, [targetUser, data]);
 
   const [assignedClients, setAssignedClients] = useState<string[]>(initialClients);
 
-  // Keep assignedClients state in sync when currentUser profile or remote assignments update
+  // Keep assignedClients state in sync when selected rep profile or remote assignments update
   useEffect(() => {
     let isMounted = true;
     setAssignedClients(initialClients);
 
     // Also attempt fetching from dedicated commercial assignments DB
-    if (currentUser.username) {
-      getCommercialAssignments(currentUser.username).then((assignments) => {
+    if (selectedRepUsername) {
+      getCommercialAssignments(selectedRepUsername).then((assignments) => {
         if (!isMounted || !Array.isArray(assignments) || assignments.length === 0) return;
         const set = new Set<string>(initialClients);
         assignments.forEach((item) => {
@@ -102,19 +133,19 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
     }
 
     return () => { isMounted = false; };
-  }, [currentUser.username, currentUser.clientesAtribuidos, currentUser.gruposEconomicos, currentUser.grupoEconomico, initialClients, data]);
+  }, [selectedRepUsername, targetUser, initialClients, data]);
 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState('');
 
   // Check if current local selection differs from user profile
   const isDirty = useMemo(() => {
-    const currentAssigned = [...(currentUser.clientesAtribuidos || [])].sort();
+    const currentAssigned = [...(targetUser.clientesAtribuidos || [])].sort();
     const nowAssigned = [...assignedClients].sort();
     return JSON.stringify(currentAssigned) !== JSON.stringify(nowAssigned);
-  }, [currentUser.clientesAtribuidos, assignedClients]);
+  }, [targetUser.clientesAtribuidos, assignedClients]);
 
-  // Handler to permanently save portfolio selection to user profile
+  // Handler to permanently save portfolio selection to target user profile
   const handleSavePortfolioToProfile = async () => {
     setIsSavingProfile(true);
     try {
@@ -137,29 +168,31 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
       });
 
       const updatedUser: User = {
-        ...currentUser,
+        ...targetUser,
         clientesAtribuidos: assignedClients,
         gruposEconomicos: Array.from(selectedGroupsSet),
-        grupoEconomico: Array.from(selectedGroupsSet)[0] || currentUser.grupoEconomico || '',
+        grupoEconomico: Array.from(selectedGroupsSet)[0] || targetUser.grupoEconomico || '',
       };
 
-      // 1. Save user profile
+      // 1. Save target user profile
       await saveUser(updatedUser);
 
-      // 2. Save explicitly to dedicated Commercial Carteira Spreadsheet DB (Colunas: Grupo Economico, Nome Cliente, Comercial)
+      // 2. Save explicitly to dedicated Commercial Carteira Spreadsheet DB
       await saveCommercialAssignments(
-        currentUser.username,
+        selectedRepUsername,
         assignedClients,
         Array.from(selectedGroupsSet),
         clientGroupMappings
       );
 
-      setCurrentUser(updatedUser);
-      if (onUpdateCurrentUser) {
-        onUpdateCurrentUser(updatedUser);
+      if (selectedRepUsername === currentUser.username) {
+        setCurrentUser(updatedUser);
+        if (onUpdateCurrentUser) {
+          onUpdateCurrentUser(updatedUser);
+        }
       }
 
-      setSaveSuccessMessage(`Carteira com ${assignedClients.length} empresas salva com sucesso no perfil e na planilha!`);
+      setSaveSuccessMessage(`Carteira do executivo "${selectedRepUsername}" atualizada com ${assignedClients.length} empresas e salva na planilha!`);
       setTimeout(() => {
         setSaveSuccessMessage('');
       }, 4000);
@@ -266,15 +299,21 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
               Análise da Carteira Comercial
+              {selectedRepUsername !== currentUser.username && (
+                <span className="block text-sm font-normal text-purple-200 mt-1">
+                  Exibindo Carteira de: <strong className="text-white font-extrabold">{selectedRepUsername}</strong>
+                </span>
+              )}
             </h1>
             <p className="text-xs sm:text-sm text-purple-200/90 max-w-2xl leading-relaxed">
-              Monitore a atividade e evolução das suas contas, selecione por Grupo Econômico ou Empresas Individuais, identifique clientes sem novas contratações nos últimos meses e ative planos de ação.
+              Monitore a atividade e evolução das suas contas, selecione por Grupo Econômico ou Empresas Individuais, identifique clientes sem novas solicitações nos últimos meses e ative planos de ação.
             </p>
           </div>
 
           {/* Timeframe Filter Switcher */}
-          <div className="bg-white/10 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 flex items-center gap-1">
+          <div className="bg-white/10 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 flex flex-wrap items-center gap-1">
             {[
+              { label: 'Mês Anterior', months: 1 },
               { label: '3 Meses', months: 3 },
               { label: '6 Meses', months: 6 },
               { label: '9 Meses', months: 9 },
@@ -283,7 +322,7 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
               <button
                 key={item.months}
                 onClick={() => setSelectedPeriodMonths(item.months)}
-                className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                className={`px-3 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   selectedPeriodMonths === item.months
                     ? 'bg-white text-[#401669] shadow-lg font-black scale-105'
                     : 'text-purple-200 hover:text-white hover:bg-white/10'
@@ -294,6 +333,34 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
             ))}
           </div>
         </div>
+
+        {/* Commercial Manager Rep Selector Bar */}
+        {isGestorOrAdmin && (
+          <div className="mt-5 pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-purple-300" />
+              <span className="text-xs font-bold text-purple-200">
+                Visão do Gestor — Selecionar Carteira Comercial:
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedRepUsername}
+                onChange={(e) => setSelectedRepUsername(e.target.value)}
+                className="px-3 py-1.5 text-xs bg-white text-[#401669] font-extrabold rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-300 shadow-md cursor-pointer min-w-[210px]"
+              >
+                <option value={currentUser.username}>Minha Carteira ({currentUser.username})</option>
+                {commercialUsers
+                  .filter((u) => u.username !== currentUser.username)
+                  .map((u) => (
+                    <option key={u.username} value={u.username}>
+                      Executivo: {u.username}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Portfolio Selector Drawer with Grupo Econômico & Client Search */}
@@ -306,11 +373,16 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
           <div>
             <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
               <Users className="w-4 h-4 text-[#401669]" />
-              Meus Clientes Vinculados à Carteira ({assignedClients.length})
+              Clientes Vinculados à Carteira ({assignedClients.length})
+              {selectedRepUsername !== currentUser.username && (
+                <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                  Carteira de {selectedRepUsername}
+                </span>
+              )}
             </h2>
             <p className="text-xs text-slate-500">
               {assignedClients.length === 0
-                ? 'Nenhum cliente atrelado à sua carteira. Expanda a área de busca abaixo para selecionar Grupos Econômicos ou Clientes e salvar no seu perfil.'
+                ? 'Nenhum cliente atrelado a esta carteira. Expanda a área de busca para selecionar Grupos Econômicos ou Clientes e salvar no perfil.'
                 : 'Exibindo análises e indicadores focados estritamente nos clientes e grupos vinculados a esta carteira.'}
             </p>
           </div>
@@ -326,7 +398,7 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 ring-2 ring-emerald-400/50'
                   : 'bg-[#401669] hover:bg-[#2d0e4c] text-white'
               }`}
-              title="Salvar esta seleção de clientes no perfil do usuário atual"
+              title={`Salvar esta seleção na carteira de ${selectedRepUsername}`}
             >
               {isSavingProfile ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -335,7 +407,13 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
               ) : (
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
               )}
-              <span>{isSavingProfile ? 'Salvando...' : isDirty ? 'Salvar no Perfil' : 'Carteira Salva'}</span>
+              <span>
+                {isSavingProfile
+                  ? 'Salvando...'
+                  : isDirty
+                  ? `Salvar em ${selectedRepUsername === currentUser.username ? 'Meu Perfil' : selectedRepUsername}`
+                  : 'Carteira Salva'}
+              </span>
             </button>
 
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
@@ -379,16 +457,16 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
                 <Briefcase className="w-3.5 h-3.5" />
                 Por Cliente / CNPJ
               </button>
-            </div>
 
-            {/* Chevron Button for Toggle */}
-            <button
-              onClick={() => setIsSelectionExpanded(!isSelectionExpanded)}
-              className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-[#401669] flex items-center justify-center hover:bg-slate-200 transition-all cursor-pointer shadow-xs"
-              title={isSelectionExpanded ? 'Recolher área de seleção' : 'Expandir busca e seleção'}
-            >
-              {isSelectionExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
+              {/* Inline Chevron Toggle Button */}
+              <button
+                onClick={() => setIsSelectionExpanded(!isSelectionExpanded)}
+                className="w-7 h-7 rounded-md bg-white border border-slate-200 text-[#401669] flex items-center justify-center hover:bg-slate-200 transition-all cursor-pointer shadow-xs ml-0.5"
+                title={isSelectionExpanded ? 'Recolher área de seleção' : 'Expandir busca e seleção'}
+              >
+                {isSelectionExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         </div>
 
