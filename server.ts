@@ -108,9 +108,38 @@ if (!cachedData || cachedData.length === 0) {
 app.use(express.json({ limit: '100mb' }));
 
 const APPS_SCRIPT_USER_URL = 'https://script.google.com/macros/s/AKfycbxvEbfCjw5prUCltIj5KWGzilUXsp-tu4fIA_ZYvr5WWJ0k4OoJL7SLOP1ZrnSCejV8/exec';
+const APPS_SCRIPT_CARTEIRA_URL = 'https://script.google.com/macros/s/AKfycbyAAGFPmP4QxDbhDLFaxvfgzKbVzFil21iSDhyXqo9dSeGweyGwBYPDPu9AaCMwz8-Yfw/exec';
 const USERS_DB_PATH = path.join(process.cwd(), 'metarh_users_db.json');
+const CARTEIRA_DB_PATH = path.join(process.cwd(), 'metarh_commercial_assignments.json');
 
 let serverUsers: any[] = [];
+let serverCarteira: Array<{ 'Grupo Economico': string; 'Nome Cliente': string; 'Comercial': string }> = [];
+
+function loadServerCarteira() {
+  try {
+    if (fs.existsSync(CARTEIRA_DB_PATH)) {
+      const raw = fs.readFileSync(CARTEIRA_DB_PATH, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        serverCarteira = parsed;
+        console.log(`[METARH Carteira DB] Loaded ${serverCarteira.length} assignments from disk.`);
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('[METARH Carteira DB] Error loading file:', err);
+  }
+}
+
+function saveServerCarteira() {
+  try {
+    fs.writeFileSync(CARTEIRA_DB_PATH, JSON.stringify(serverCarteira, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[METARH Carteira DB] Error writing file:', err);
+  }
+}
+
+loadServerCarteira();
 
 function loadServerUsers() {
   try {
@@ -253,6 +282,114 @@ app.all('/api/users', async (req, res) => {
   } catch (err: any) {
     console.error('Error in /api/users handler:', err);
     return res.status(500).json({ success: false, error: err.message, users: serverUsers });
+  }
+});
+
+// API Route for Commercial Assignments (Grupo Economico, Nome Cliente, Comercial)
+app.all('/api/commercial-assignments', async (req, res) => {
+  try {
+    const action = (req.query.action || req.body?.action || 'getAssignments').toString();
+    const comercialFilter = (req.query.comercial || req.body?.comercial || req.query.username || req.body?.username || '').toString().trim();
+
+    if (action === 'saveAssignments' || req.method === 'POST') {
+      const comercial = (req.body?.comercial || req.body?.username || comercialFilter).trim();
+      if (!comercial) {
+        return res.status(400).json({ success: false, error: 'Usuário Comercial é obrigatório' });
+      }
+
+      const comercialLower = comercial.toLowerCase();
+      // Remove previous entries for this commercial user
+      serverCarteira = serverCarteira.filter(
+        (item) => String(item.Comercial || '').trim().toLowerCase() !== comercialLower
+      );
+
+      // Extract new items
+      const rawItems = req.body?.items;
+      if (Array.isArray(rawItems) && rawItems.length > 0) {
+        rawItems.forEach((it: any) => {
+          serverCarteira.push({
+            'Grupo Economico': String(it['Grupo Economico'] || it.grupoEconomico || '').trim(),
+            'Nome Cliente': String(it['Nome Cliente'] || it.nomeCliente || '').trim(),
+            'Comercial': comercial,
+          });
+        });
+      } else {
+        const clientes: string[] = Array.isArray(req.body?.clientes)
+          ? req.body.clientes
+          : typeof req.body?.clientes === 'string'
+          ? req.body.clientes.split(',').map((s: string) => s.trim())
+          : [];
+
+        const grupos: string[] = Array.isArray(req.body?.grupos)
+          ? req.body.grupos
+          : typeof req.body?.grupos === 'string'
+          ? req.body.grupos.split(',').map((s: string) => s.trim())
+          : [];
+
+        const mappings: Record<string, string> = req.body?.mappings || {};
+
+        if (clientes.length > 0) {
+          clientes.forEach((cli) => {
+            if (!cli) return;
+            const grp = mappings[cli] || grupos[0] || '';
+            serverCarteira.push({
+              'Grupo Economico': grp,
+              'Nome Cliente': cli,
+              'Comercial': comercial,
+            });
+          });
+        } else if (grupos.length > 0) {
+          grupos.forEach((grp) => {
+            if (!grp) return;
+            serverCarteira.push({
+              'Grupo Economico': grp,
+              'Nome Cliente': '',
+              'Comercial': comercial,
+            });
+          });
+        }
+      }
+
+      saveServerCarteira();
+      console.log(`[METARH Carteira DB] Saved assignments for Comercial '${comercial}' (${serverCarteira.length} total assignments in DB).`);
+
+      // Asynchronously trigger Google Apps Script Web App sync
+      try {
+        const params = new URLSearchParams();
+        params.append('action', 'saveAssignments');
+        params.append('comercial', comercial);
+        params.append('clientes', JSON.stringify(req.body?.clientes || []));
+        params.append('grupos', JSON.stringify(req.body?.grupos || []));
+        params.append('mappings', JSON.stringify(req.body?.mappings || {}));
+
+        fetch(`${APPS_SCRIPT_CARTEIRA_URL}?${params.toString()}`, {
+          method: 'GET',
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          signal: AbortSignal.timeout(5000),
+        }).catch(() => {});
+      } catch (e) {
+        // ignore background sync errors
+      }
+
+      const comercialData = serverCarteira.filter(
+        (i) => String(i.Comercial || '').trim().toLowerCase() === comercialLower
+      );
+      return res.json({ success: true, comercial, data: comercialData, all: serverCarteira });
+    }
+
+    // Default action: getAssignments
+    if (comercialFilter) {
+      const comercialLower = comercialFilter.toLowerCase();
+      const filtered = serverCarteira.filter(
+        (i) => String(i.Comercial || '').trim().toLowerCase() === comercialLower
+      );
+      return res.json({ success: true, comercial: comercialFilter, data: filtered });
+    }
+
+    return res.json({ success: true, data: serverCarteira });
+  } catch (err: any) {
+    console.error('Error in /api/commercial-assignments handler:', err);
+    return res.status(500).json({ success: false, error: err.message, data: serverCarteira });
   }
 });
 

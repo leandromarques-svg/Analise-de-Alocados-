@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Funcionario, User } from '../../types';
-import { saveUser, setCurrentUser } from '../../services/userService';
+import { saveUser, setCurrentUser, saveCommercialAssignments, getCommercialAssignments } from '../../services/userService';
 import {
   analyzePortfolioForPeriod,
   saveClientAssignment,
@@ -70,10 +70,38 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
 
   const [assignedClients, setAssignedClients] = useState<string[]>(initialClients);
 
-  // Keep assignedClients state in sync when currentUser profile updates
+  // Keep assignedClients state in sync when currentUser profile or remote assignments update
   useEffect(() => {
+    let isMounted = true;
     setAssignedClients(initialClients);
-  }, [currentUser.username, currentUser.clientesAtribuidos, currentUser.gruposEconomicos, currentUser.grupoEconomico]);
+
+    // Also attempt fetching from dedicated commercial assignments DB
+    if (currentUser.username) {
+      getCommercialAssignments(currentUser.username).then((assignments) => {
+        if (!isMounted || !Array.isArray(assignments) || assignments.length === 0) return;
+        const set = new Set<string>(initialClients);
+        assignments.forEach((item) => {
+          const cli = item['Nome Cliente'];
+          const grp = item['Grupo Economico'];
+          if (cli) set.add(cli);
+          if (grp) {
+            const gLower = grp.toLowerCase().trim();
+            data.forEach((w) => {
+              const wGrp = w.grupoEconomico?.toLowerCase().trim() || '';
+              if (wGrp === gLower || wGrp.includes(gLower) || gLower.includes(wGrp)) {
+                if (w.nomeCliente) set.add(w.nomeCliente);
+              }
+            });
+          }
+        });
+        if (set.size > 0) {
+          setAssignedClients(Array.from(set));
+        }
+      });
+    }
+
+    return () => { isMounted = false; };
+  }, [currentUser.username, currentUser.clientesAtribuidos, currentUser.gruposEconomicos, currentUser.grupoEconomico, initialClients, data]);
 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState('');
@@ -90,10 +118,13 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
     setIsSavingProfile(true);
     try {
       const selectedGroupsSet = new Set<string>();
+      const clientGroupMappings: Record<string, string> = {};
+
       assignedClients.forEach((client) => {
         const match = data.find((w) => w.nomeCliente.toLowerCase() === client.toLowerCase());
         if (match && match.grupoEconomico) {
           selectedGroupsSet.add(match.grupoEconomico);
+          clientGroupMappings[client] = match.grupoEconomico;
         }
       });
 
@@ -104,18 +135,28 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
         grupoEconomico: Array.from(selectedGroupsSet)[0] || currentUser.grupoEconomico || '',
       };
 
+      // 1. Save user profile
       await saveUser(updatedUser);
+
+      // 2. Save explicitly to dedicated Commercial Carteira Spreadsheet DB (Colunas: Grupo Economico, Nome Cliente, Comercial)
+      await saveCommercialAssignments(
+        currentUser.username,
+        assignedClients,
+        Array.from(selectedGroupsSet),
+        clientGroupMappings
+      );
+
       setCurrentUser(updatedUser);
       if (onUpdateCurrentUser) {
         onUpdateCurrentUser(updatedUser);
       }
 
-      setSaveSuccessMessage(`Carteira com ${assignedClients.length} empresas salva com sucesso no perfil!`);
+      setSaveSuccessMessage(`Carteira com ${assignedClients.length} empresas salva com sucesso no perfil e na planilha!`);
       setTimeout(() => {
         setSaveSuccessMessage('');
       }, 4000);
     } catch (err) {
-      console.error('Erro ao salvar carteira no perfil:', err);
+      console.error('Erro ao salvar carteira no perfil e planilha:', err);
     } finally {
       setIsSavingProfile(false);
     }

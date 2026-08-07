@@ -1,7 +1,9 @@
 import { User, UserRole, UserLog } from '../types';
 
 const APPS_SCRIPT_USER_URL = 'https://script.google.com/macros/s/AKfycbxvEbfCjw5prUCltIj5KWGzilUXsp-tu4fIA_ZYvr5WWJ0k4OoJL7SLOP1ZrnSCejV8/exec';
+const APPS_SCRIPT_CARTEIRA_URL = 'https://script.google.com/macros/s/AKfycbyAAGFPmP4QxDbhDLFaxvfgzKbVzFil21iSDhyXqo9dSeGweyGwBYPDPu9AaCMwz8-Yfw/exec';
 const LOCAL_STORAGE_KEY = 'metarh_users_v2';
+const CARTEIRA_LOCAL_KEY = 'metarh_carteira_assignments_v1';
 const CURRENT_USER_KEY = 'metarh_current_user_v2';
 const DELETED_USERS_KEY = 'metarh_deleted_users_v2';
 
@@ -332,4 +334,100 @@ export const setCurrentUser = (user: User | null): void => {
 
 export const logoutUser = (): void => {
   localStorage.removeItem(CURRENT_USER_KEY);
+};
+
+export interface CommercialAssignment {
+  'Grupo Economico': string;
+  'Nome Cliente': string;
+  'Comercial': string;
+}
+
+export const getCommercialAssignments = async (comercialUsername?: string): Promise<CommercialAssignment[]> => {
+  try {
+    const url = comercialUsername
+      ? `/api/commercial-assignments?comercial=${encodeURIComponent(comercialUsername)}&t=${Date.now()}`
+      : `/api/commercial-assignments?t=${Date.now()}`;
+
+    const apiRes = await fetch(url);
+    if (apiRes.ok) {
+      const json = await apiRes.json();
+      if (json && Array.isArray(json.data)) {
+        localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(json.data));
+        return json.data;
+      }
+    }
+  } catch (e) {
+    console.warn('Could not fetch commercial assignments from /api/commercial-assignments:', e);
+  }
+
+  // Fallback to local storage
+  try {
+    const stored = localStorage.getItem(CARTEIRA_LOCAL_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        if (comercialUsername) {
+          const lower = comercialUsername.toLowerCase();
+          return parsed.filter((item) => String(item.Comercial || '').toLowerCase() === lower);
+        }
+        return parsed;
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return [];
+};
+
+export const saveCommercialAssignments = async (
+  comercialUsername: string,
+  clientes: string[],
+  grupos: string[],
+  mappings: Record<string, string> = {}
+): Promise<boolean> => {
+  const payload = {
+    action: 'saveAssignments',
+    comercial: comercialUsername,
+    clientes,
+    grupos,
+    mappings,
+  };
+
+  // 1. Sync to server API
+  try {
+    const apiRes = await fetch('/api/commercial-assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (apiRes.ok) {
+      const json = await apiRes.json();
+      if (json && Array.isArray(json.data)) {
+        localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(json.data));
+      }
+    }
+  } catch (e) {
+    console.warn('Could not post to /api/commercial-assignments:', e);
+  }
+
+  // 2. Direct ping to Google Apps Script Web App
+  try {
+    const params = new URLSearchParams();
+    params.append('action', 'saveAssignments');
+    params.append('comercial', comercialUsername);
+    params.append('clientes', clientes.join(','));
+    params.append('grupos', grupos.join(','));
+    params.append('t', String(Date.now()));
+
+    const targetUrl = `${APPS_SCRIPT_CARTEIRA_URL}?${params.toString()}`;
+    const img = new Image();
+    img.src = targetUrl;
+
+    fetch(targetUrl, { method: 'GET', mode: 'no-cors' }).catch(() => {});
+  } catch (e) {
+    console.warn('Could not ping Apps Script Carteira URL:', e);
+  }
+
+  return true;
 };
