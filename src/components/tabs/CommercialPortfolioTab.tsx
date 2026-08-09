@@ -7,6 +7,7 @@ import {
   getClientAssignments,
 } from '../../utils/commercialUtils';
 import { CommercialAnalyticsCharts } from '../CommercialAnalyticsCharts';
+import { ExecutiveReportModal } from '../ExecutiveReportModal';
 import {
   TrendingUp,
   TrendingDown,
@@ -31,6 +32,7 @@ import {
   Clock,
   Save,
   Loader2,
+  FileText,
 } from 'lucide-react';
 
 interface CommercialPortfolioTabProps {
@@ -59,6 +61,7 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
   // View filter states for filtering portfolio analytics by Grupo or Cliente
   const [viewFilterGrupo, setViewFilterGrupo] = useState<string>('all');
   const [viewFilterCliente, setViewFilterCliente] = useState<string>('all');
+  const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
 
   // Gestor / Admin rep selection state
   const isGestorOrAdmin =
@@ -378,10 +381,21 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
             </p>
           </div>
 
-          {/* Timeframe Indicator Badge (Fixed Mês Atual vs Mês Anterior) */}
-          <div className="bg-white/10 px-4 py-2.5 rounded-2xl backdrop-blur-md border border-white/10 flex items-center gap-2 text-xs font-black text-white flex-shrink-0 shadow-sm">
-            <Clock className="w-4 h-4 text-amber-300" />
-            <span>Comparativo: Mês Atual vs Mês Anterior</span>
+          {/* Timeframe Indicator Badge & PDF Report Button */}
+          <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
+            <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer border border-emerald-400/40"
+              title="Gerar Relatório Executivo em alta definição para a Sócia Proprietária Dona Biga"
+            >
+              <FileText className="w-4 h-4 text-emerald-100" />
+              <span>Relatório Executivo PDF (Dona Biga)</span>
+            </button>
+
+            <div className="bg-white/10 px-4 py-2.5 rounded-2xl backdrop-blur-md border border-white/10 flex items-center gap-2 text-xs font-black text-white shadow-sm">
+              <Clock className="w-4 h-4 text-amber-300" />
+              <span>Comparativo: Mês Atual vs Mês Anterior</span>
+            </div>
           </div>
         </div>
 
@@ -1053,6 +1067,15 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Executive PDF Report Modal for Dona Biga */}
+      <ExecutiveReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        workers={data}
+        commercialReps={commercialUsers}
+        currentUser={currentUser}
+      />
 
     </div>
   );

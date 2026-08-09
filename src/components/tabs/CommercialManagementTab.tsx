@@ -4,9 +4,12 @@ import {
   getClientInactivityList,
   saveClientAssignment,
   getClientAssignments,
+  syncCommercialAssignmentsServer,
 } from '../../utils/commercialUtils';
 import { getUsers, addUserLog, saveCommercialAssignments, saveUser } from '../../services/userService';
 import { CommercialAnalyticsCharts } from '../CommercialAnalyticsCharts';
+import { TeamProductivityCharts } from '../TeamProductivityCharts';
+import { ExecutiveReportModal } from '../ExecutiveReportModal';
 import {
   UserCheck,
   Building2,
@@ -22,6 +25,8 @@ import {
   Shield,
   Briefcase,
   UserPlus,
+  FileText,
+  RefreshCw,
 } from 'lucide-react';
 
 interface CommercialManagementTabProps {
@@ -36,6 +41,8 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
 }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isSyncingServer, setIsSyncingServer] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [assignments, setAssignments] = useState<Record<string, string>>(() => getClientAssignments());
   const [msg, setMsg] = useState('');
   const [selectedRepFilter, setSelectedRepFilter] = useState<string>('all');
@@ -44,12 +51,28 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [grupoSearchTerm, setGrupoSearchTerm] = useState('');
 
+  // Sync assignments with server on load
+  const handleServerSync = async () => {
+    setIsSyncingServer(true);
+    try {
+      const synced = await syncCommercialAssignmentsServer();
+      setAssignments({ ...synced });
+      setMsg('Atribuições de carteira sincronizadas com a planilha e banco de dados do servidor!');
+      setTimeout(() => setMsg(''), 4000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSyncingServer(false);
+    }
+  };
+
   // Load commercial users list
   const loadCommercialUsers = async () => {
     setIsLoadingUsers(true);
     try {
       const list = await getUsers();
       setUsers(list);
+      await handleServerSync();
     } catch (e) {
       console.error(e);
     } finally {
@@ -273,11 +296,30 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md border border-white/10 text-center min-w-[120px]">
+            <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer border border-emerald-400/40"
+              title="Gerar Relatório Executivo em alta definição para a Sócia Proprietária Dona Biga"
+            >
+              <FileText className="w-4 h-4 text-emerald-100" />
+              <span>Relatório Executivo PDF (Dona Biga)</span>
+            </button>
+
+            <button
+              onClick={handleServerSync}
+              disabled={isSyncingServer}
+              className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-2xl border border-white/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              title="Sincronizar a planilha de carteira com o servidor de banco de dados"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-purple-200 ${isSyncingServer ? 'animate-spin' : ''}`} />
+              <span>Sincronizar Carteira</span>
+            </button>
+
+            <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md border border-white/10 text-center min-w-[110px]">
               <span className="text-xl font-black block">{unassignedCount}</span>
               <span className="text-[10px] text-purple-200 uppercase font-bold tracking-wider">Sem Proprietário</span>
             </div>
-            <div className="bg-rose-500/20 p-3 rounded-2xl backdrop-blur-md border border-rose-400/30 text-center min-w-[120px]">
+            <div className="bg-rose-500/20 p-3 rounded-2xl backdrop-blur-md border border-rose-400/30 text-center min-w-[110px]">
               <span className="text-xl font-black text-rose-200 block">{totalInactiveCount}</span>
               <span className="text-[10px] text-rose-200 uppercase font-bold tracking-wider">Inativos &gt; 1 Ano</span>
             </div>
@@ -293,73 +335,91 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
       )}
 
       {/* Commercial Reps Performance Comparison */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-100">
           <div>
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Users className="w-5 h-5 text-[#401669]" />
-              Desempenho Comparativo da Equipe Comercial ({teamPerformance.length})
+              Desempenho & Produtividade Comparativa da Equipe Comercial ({teamPerformance.length})
             </h2>
             <p className="text-xs text-slate-500">
-              Analise a cobertura de carteiras, folha gerida e identificação de clientes inativos por executivo.
+              Analise a cobertura de carteiras, folha gerida, ticket médio e identificação de clientes inativos por executivo de vendas.
             </p>
           </div>
+
+          <button
+            onClick={() => setIsReportModalOpen(true)}
+            className="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 text-[#401669] font-bold text-xs rounded-xl border border-purple-200 transition-all flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-[#9c3aff]" />
+            <span>Ver Visão de Diretoria (Dona Biga)</span>
+          </button>
         </div>
 
-        <div className="border border-slate-200 rounded-xl overflow-hidden overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-100 text-slate-700 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
-              <tr>
-                <th className="p-3">Executivo Comercial</th>
-                <th className="p-3">Cargo / Perfil</th>
-                <th className="p-3 text-center">Clientes Atribuídos</th>
-                <th className="p-3 text-center">Ativos Geridos</th>
-                <th className="p-3 text-right">Folha Mensal Gerida</th>
-                <th className="p-3 text-right">Ticket Médio</th>
-                <th className="p-3 text-center">Inativos (&gt; 1 Ano)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white font-medium">
-              {teamPerformance.map((item) => (
-                <tr key={item.rep.username} className="hover:bg-purple-50/50 transition-colors">
-                  <td className="p-3 font-bold text-slate-900 flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-full bg-purple-100 text-[#401669] flex items-center justify-center text-xs font-black">
-                      {item.rep.username.substring(0, 2).toUpperCase()}
-                    </span>
-                    {item.rep.username}
-                  </td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 bg-purple-100 text-[#401669] text-[10px] font-bold rounded-full">
-                      {item.rep.role}
-                    </span>
-                  </td>
-                  <td className="p-3 text-center font-bold text-slate-900">
-                    {item.assignedClientsCount} empresas
-                  </td>
-                  <td className="p-3 text-center font-bold text-emerald-800">
-                    {item.totalActiveWorkers} alocados
-                  </td>
-                  <td className="p-3 text-right font-bold text-slate-900">
-                    R$ {item.totalFolha.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="p-3 text-right font-bold text-slate-700">
-                    R$ {item.avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="p-3 text-center">
-                    {item.inactiveAccounts > 0 ? (
-                      <span className="px-2 py-0.5 bg-rose-100 text-rose-800 font-bold rounded-lg text-[10px]">
-                        {item.inactiveAccounts} contas inativas
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-lg text-[10px]">
-                        0 inativas
-                      </span>
-                    )}
-                  </td>
+        {/* Productivity Comparison Charts */}
+        <TeamProductivityCharts teamStats={teamPerformance} />
+
+        {/* Comparative Summary Table */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+            <Briefcase className="w-4 h-4 text-[#401669]" />
+            Tabela Detalhada de Cobertura por Comercial
+          </h3>
+          <div className="border border-slate-200 rounded-xl overflow-hidden overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-100 text-slate-700 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
+                <tr>
+                  <th className="p-3">Executivo Comercial</th>
+                  <th className="p-3">Cargo / Perfil</th>
+                  <th className="p-3 text-center">Clientes Atribuídos</th>
+                  <th className="p-3 text-center">Ativos Geridos</th>
+                  <th className="p-3 text-right">Folha Mensal Gerida</th>
+                  <th className="p-3 text-right">Ticket Médio</th>
+                  <th className="p-3 text-center">Inativos (&gt; 1 Ano)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white font-medium">
+                {teamPerformance.map((item) => (
+                  <tr key={item.rep.username} className="hover:bg-purple-50/50 transition-colors">
+                    <td className="p-3 font-bold text-slate-900 flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-purple-100 text-[#401669] flex items-center justify-center text-xs font-black">
+                        {item.rep.username.substring(0, 2).toUpperCase()}
+                      </span>
+                      {item.rep.username}
+                    </td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 bg-purple-100 text-[#401669] text-[10px] font-bold rounded-full">
+                        {item.rep.role}
+                      </span>
+                    </td>
+                    <td className="p-3 text-center font-bold text-slate-900">
+                      {item.assignedClientsCount} empresas
+                    </td>
+                    <td className="p-3 text-center font-bold text-emerald-800">
+                      {item.totalActiveWorkers} alocados
+                    </td>
+                    <td className="p-3 text-right font-bold text-slate-900">
+                      R$ {item.totalFolha.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="p-3 text-right font-bold text-slate-700">
+                      R$ {item.avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="p-3 text-center">
+                      {item.inactiveAccounts > 0 ? (
+                        <span className="px-2 py-0.5 bg-rose-100 text-rose-800 font-bold rounded-lg text-[10px]">
+                          {item.inactiveAccounts} contas inativas
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-lg text-[10px]">
+                          0 inativas
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -575,6 +635,15 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
         </div>
 
       </div>
+
+      {/* Executive PDF Report Modal for Dona Biga */}
+      <ExecutiveReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        workers={data}
+        commercialReps={commercialReps}
+        currentUser={currentUser}
+      />
 
     </div>
   );

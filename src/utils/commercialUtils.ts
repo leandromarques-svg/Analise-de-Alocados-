@@ -1,6 +1,7 @@
 import { Funcionario } from '../types';
 
 const CLIENT_ASSIGNMENTS_KEY = 'metarh_commercial_client_assignments_v1';
+const CARTEIRA_LOCAL_KEY = 'metarh_carteira_assignments_v1';
 
 export interface ClientInactivityStatus {
   clientName: string;
@@ -44,20 +45,41 @@ export function formatDateDDMMAAAA(dateStr: string | null | undefined): string {
   return `${day}/${month}/${year}`;
 }
 
-// Read client assignments mapping from localStorage
+// Read client assignments mapping from localStorage, merging keys if needed
 export function getClientAssignments(): Record<string, string> {
+  let map: Record<string, string> = {};
   try {
     const stored = localStorage.getItem(CLIENT_ASSIGNMENTS_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      map = JSON.parse(stored);
     }
   } catch (e) {
     console.error('Error reading client assignments:', e);
   }
-  return {};
+
+  // Also check CARTEIRA_LOCAL_KEY array if present
+  try {
+    const carteiraRaw = localStorage.getItem(CARTEIRA_LOCAL_KEY);
+    if (carteiraRaw) {
+      const parsed = JSON.parse(carteiraRaw);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item) => {
+          const cli = item['Nome Cliente'] || item.nomeCliente || item.cliente;
+          const rep = item['Comercial'] || item.comercial;
+          if (cli && rep && !map[cli]) {
+            map[cli] = rep;
+          }
+        });
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return map;
 }
 
-// Assign client to commercial representative
+// Assign client to commercial representative and sync across local & server storage
 export function saveClientAssignment(clientName: string, repUsername: string): Record<string, string> {
   const current = getClientAssignments();
   if (repUsername) {
@@ -65,12 +87,71 @@ export function saveClientAssignment(clientName: string, repUsername: string): R
   } else {
     delete current[clientName];
   }
+
   try {
     localStorage.setItem(CLIENT_ASSIGNMENTS_KEY, JSON.stringify(current));
   } catch (e) {
     console.error('Error saving client assignment:', e);
   }
+
+  // Also update CARTEIRA_LOCAL_KEY array
+  try {
+    const items = Object.entries(current).map(([cli, rep]) => ({
+      'Grupo Economico': '',
+      'Nome Cliente': cli,
+      'Comercial': rep,
+    }));
+    localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(items));
+  } catch (e) {
+    // ignore
+  }
+
+  // Asynchronously trigger server API POST
+  if (repUsername) {
+    const repClients = Object.entries(current)
+      .filter(([_, r]) => r === repUsername)
+      .map(([cli]) => cli);
+
+    fetch('/api/commercial-assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'saveAssignments',
+        comercial: repUsername,
+        clientes: repClients,
+        grupos: [],
+      }),
+    }).catch((err) => console.warn('Background sync failed:', err));
+  }
+
   return current;
+}
+
+// Sync assignments from server DB into local storage
+export async function syncCommercialAssignmentsServer(): Promise<Record<string, string>> {
+  try {
+    const res = await fetch(`/api/commercial-assignments?t=${Date.now()}`);
+    if (res.ok) {
+      const json = await res.json();
+      const items = json.data || json;
+      if (Array.isArray(items) && items.length > 0) {
+        const current = getClientAssignments();
+        items.forEach((item: any) => {
+          const cli = item['Nome Cliente'] || item.nomeCliente || item.cliente;
+          const rep = item['Comercial'] || item.comercial;
+          if (cli && rep) {
+            current[cli] = rep;
+          }
+        });
+        localStorage.setItem(CLIENT_ASSIGNMENTS_KEY, JSON.stringify(current));
+        localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(items));
+        return current;
+      }
+    }
+  } catch (e) {
+    console.warn('Could not sync commercial assignments from server:', e);
+  }
+  return getClientAssignments();
 }
 
 // Calculate inactivity status for all unique Clients in the dataset
