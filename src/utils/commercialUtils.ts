@@ -130,7 +130,7 @@ export function saveClientAssignment(clientName: string, repUsername: string): R
 // Sync assignments from server DB into local storage
 export async function syncCommercialAssignmentsServer(): Promise<Record<string, string>> {
   try {
-    const res = await fetch(`/api/commercial-assignments?t=${Date.now()}`);
+    const res = await fetch(`/api/commercial-assignments?refresh=true&t=${Date.now()}`);
     if (res.ok) {
       const json = await res.json();
       const items = json.data || json;
@@ -138,9 +138,11 @@ export async function syncCommercialAssignmentsServer(): Promise<Record<string, 
         const current = getClientAssignments();
         items.forEach((item: any) => {
           const cli = item['Nome Cliente'] || item.nomeCliente || item.cliente;
+          const grp = item['Grupo Economico'] || item.grupoEconomico || item.grupo;
           const rep = item['Comercial'] || item.comercial;
-          if (cli && rep) {
-            current[cli] = rep;
+          if (rep) {
+            if (cli) current[cli] = rep;
+            if (grp) current[grp] = rep;
           }
         });
         localStorage.setItem(CLIENT_ASSIGNMENTS_KEY, JSON.stringify(current));
@@ -223,6 +225,8 @@ export function getClientInactivityList(
       isInactiveOver1Year = true;
     }
 
+    const assignedRep = assignments[clientName] || (grupoEconomico ? assignments[grupoEconomico] : '') || '';
+
     list.push({
       clientName,
       cnpj,
@@ -235,7 +239,7 @@ export function getClientInactivityList(
       lastAdmissionDate: formatDateDDMMAAAA(latestAdmissionStr),
       daysSinceLastAdmission,
       isInactiveOver1Year,
-      assignedRep: assignments[clientName] || '',
+      assignedRep,
       recentAdmissionsCount: recentAdmissions,
     });
   });

@@ -23,6 +23,12 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
   const assignments = getClientAssignments();
   const clientList = getClientInactivityList(workers, 12);
 
+  // Filter sales reps (role === 'Comercial') vs management/directors (Administrador, Gerencial Comercial)
+  const salesReps = commercialReps.filter((rep) => rep.role === 'Comercial');
+  const managementUsers = commercialReps.filter(
+    (rep) => rep.role === 'Gerencial Comercial' || rep.role === 'Administrador'
+  );
+
   // Overall metrics
   const activeWorkers = workers.filter((w) => w.isAtivo);
   const totalActiveHeadcount = activeWorkers.length;
@@ -31,29 +37,52 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
   const unassignedClientsCount = clientList.filter((c) => !assignments[c.clientName]).length;
   const inactiveClientsOver1Year = clientList.filter((c) => c.isInactiveOver1Year);
 
-  // Per-rep team performance breakdown
-  const teamStats = commercialReps.map((rep) => {
-    const repClients = clientList.filter((c) => {
-      const direct = assignments[c.clientName] === rep.username;
-      const profile = rep.clientesAtribuidos?.includes(c.clientName);
-      return direct || profile;
-    });
+  // Macro metrics for Dona Biga
+  const totalAdmitidosHistorico = workers.length;
+  const totalDemitidos = workers.filter(
+    (w) => !w.isAtivo || (w.dataDemissao && w.dataDemissao !== '-') || w.anoDemissao !== null
+  ).length;
 
-    const activeCount = repClients.reduce((sum, c) => sum + c.activeWorkers, 0);
-    const folhaSum = repClients.reduce((sum, c) => sum + c.totalMonthlySalary, 0);
-    const ticket = activeCount > 0 ? folhaSum / activeCount : 0;
-    const inactiveCount = repClients.filter((c) => c.isInactiveOver1Year).length;
+  const totalProrrogacoes = workers.filter((w) => {
+    const p = w.dataVctoProrrogacao;
+    return p && String(p).trim() !== '' && String(p).trim() !== '-';
+  }).length;
 
-    return {
-      repName: rep.username,
-      role: rep.role,
-      assignedClientsCount: repClients.length,
-      activeCount,
-      folhaSum,
-      ticket,
-      inactiveCount,
-    };
-  }).sort((a, b) => b.folhaSum - a.folhaSum);
+  const totalTemporarios = activeWorkers.filter((w) => {
+    const v = (w.vinculo || '').toLowerCase();
+    return v.includes('temp') || v.includes('6094');
+  }).length;
+
+  const totalCLT = activeWorkers.filter((w) => {
+    const v = (w.vinculo || '').toLowerCase();
+    return v.includes('clt') || v.includes('efetiv');
+  }).length;
+
+  // Per-rep team performance breakdown (Sales reps only)
+  const teamStats = salesReps
+    .map((rep) => {
+      const repClients = clientList.filter((c) => {
+        const direct = assignments[c.clientName] === rep.username;
+        const profile = rep.clientesAtribuidos?.includes(c.clientName);
+        return direct || profile;
+      });
+
+      const activeCount = repClients.reduce((sum, c) => sum + c.activeWorkers, 0);
+      const folhaSum = repClients.reduce((sum, c) => sum + c.totalMonthlySalary, 0);
+      const ticket = activeCount > 0 ? folhaSum / activeCount : 0;
+      const inactiveCount = repClients.filter((c) => c.isInactiveOver1Year).length;
+
+      return {
+        repName: rep.username,
+        role: rep.role,
+        assignedClientsCount: repClients.length,
+        activeCount,
+        folhaSum,
+        ticket,
+        inactiveCount,
+      };
+    })
+    .sort((a, b) => b.folhaSum - a.folhaSum);
 
   const handlePrint = () => {
     window.print();
@@ -164,35 +193,65 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
             </p>
           </div>
 
-          {/* Key Metric Cards Grid (Large High-Contrast Numbers) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            <div className="p-5 rounded-2xl bg-slate-50 border-2 border-slate-300 text-slate-900 space-y-1">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-700 block">Trabalhadores Ativos</span>
-              <span className="text-3xl font-black text-slate-900 block">{totalActiveHeadcount.toLocaleString('pt-BR')}</span>
-              <span className="text-xs font-bold text-slate-600 block">Colaboradores em operação</span>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 space-y-1">
-              <span className="text-xs font-black uppercase tracking-wider text-emerald-800 block">Folha Mensal Total</span>
-              <span className="text-2xl sm:text-3xl font-black text-emerald-950 block">
-                R$ {totalMonthlyFolha.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          {/* Macro Visões de Operação RH (Dona Biga): Admitidos, Demitidos e Prorrogações */}
+          <div className="bg-gradient-to-br from-slate-900 to-[#1e0735] text-white p-6 sm:p-8 rounded-3xl shadow-xl border-2 border-purple-800 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-800/80 pb-4">
+              <div>
+                <h2 className="text-xl font-black text-purple-200 uppercase tracking-wide flex items-center gap-2">
+                  <TrendingUp className="w-6 h-6 text-emerald-400" />
+                  Visão Macro para a Diretoria (Dona Biga): Movimentação de Alocados
+                </h2>
+                <p className="text-xs text-purple-300 font-semibold mt-0.5">
+                  Indicadores operacionais de entradas, encerramentos de contrato e extensão de vínculos na MetaRH.
+                </p>
+              </div>
+              <span className="px-3 py-1 bg-purple-500/20 text-purple-200 border border-purple-400/30 font-black text-xs rounded-xl self-start sm:self-auto">
+                Consolidado Geral MetaRH
               </span>
-              <span className="text-xs font-bold text-emerald-800 block">Massa salarial administrada</span>
             </div>
 
-            <div className="p-5 rounded-2xl bg-purple-50 border-2 border-purple-300 text-purple-950 space-y-1">
-              <span className="text-xs font-black uppercase tracking-wider text-[#401669] block">Base de Clientes</span>
-              <span className="text-3xl font-black text-[#401669] block">{totalClientsCount}</span>
-              <span className="text-xs font-bold text-purple-800 block">Empresas cadastradas</span>
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              
+              {/* Card 1: Admitidos / Alocados */}
+              <div className="bg-white/10 p-5 rounded-2xl border border-white/15 space-y-2 backdrop-blur-md">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-purple-200 tracking-wider">1. Alocados Admitidos</span>
+                  <Users className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div className="text-3xl font-black text-white">{totalActiveHeadcount.toLocaleString('pt-BR')}</div>
+                <div className="text-xs text-slate-300 font-medium space-y-0.5 pt-1 border-t border-white/10">
+                  <div>• Admitidos Ativos em Operação: <strong className="text-emerald-300">{totalActiveHeadcount}</strong></div>
+                  <div>• Histórico Total Cadastrado: <strong className="text-white">{totalAdmitidosHistorico.toLocaleString('pt-BR')}</strong></div>
+                </div>
+              </div>
 
-            <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 space-y-1">
-              <span className="text-xs font-black uppercase tracking-wider text-amber-900 block">Contas sem Responsável</span>
-              <span className="text-3xl font-black text-amber-950 block">{unassignedClientsCount}</span>
-              <span className="text-xs font-bold text-amber-800 block">Aguardando atribuição</span>
-            </div>
+              {/* Card 2: Demitidos / Desligamentos */}
+              <div className="bg-white/10 p-5 rounded-2xl border border-white/15 space-y-2 backdrop-blur-md">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-purple-200 tracking-wider">2. Alocados Demitidos</span>
+                  <AlertTriangle className="w-5 h-5 text-rose-400" />
+                </div>
+                <div className="text-3xl font-black text-rose-300">{totalDemitidos.toLocaleString('pt-BR')}</div>
+                <div className="text-xs text-slate-300 font-medium space-y-0.5 pt-1 border-t border-white/10">
+                  <div>• Desligados / Encerrados: <strong className="text-rose-300">{totalDemitidos.toLocaleString('pt-BR')}</strong></div>
+                  <div>• Taxa de Permanência Ativa: <strong className="text-emerald-300">{((totalActiveHeadcount / totalAdmitidosHistorico) * 100).toFixed(1)}%</strong></div>
+                </div>
+              </div>
 
+              {/* Card 3: Prorrogações de Contrato */}
+              <div className="bg-white/10 p-5 rounded-2xl border border-white/15 space-y-2 backdrop-blur-md">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-purple-200 tracking-wider">3. Prorrogações & Vínculos</span>
+                  <Award className="w-5 h-5 text-amber-400" />
+                </div>
+                <div className="text-3xl font-black text-amber-300">{totalProrrogacoes.toLocaleString('pt-BR')}</div>
+                <div className="text-xs text-slate-300 font-medium space-y-0.5 pt-1 border-t border-white/10">
+                  <div>• Vínculos Temporários (6.094): <strong className="text-amber-300">{totalTemporarios}</strong></div>
+                  <div>• Vínculos Efetivos CLT: <strong className="text-purple-200">{totalCLT}</strong></div>
+                </div>
+              </div>
+
+            </div>
           </div>
 
           {/* Team Performance Table Section */}

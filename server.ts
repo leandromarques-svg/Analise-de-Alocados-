@@ -142,6 +142,47 @@ function saveServerCarteira() {
 
 loadServerCarteira();
 
+async function fetchCarteiraFromGoogleScript() {
+  console.log('[METARH Carteira Sync] Initiating fetch from Google Apps Script (Atendimento Comercial)...');
+  try {
+    const response = await fetch(`${APPS_SCRIPT_CARTEIRA_URL}?action=getAssignments&t=${Date.now()}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Accept': 'application/json, text/plain, */*'
+      },
+      signal: AbortSignal.timeout(30000)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Google Script Carteira HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+    if (Array.isArray(list) && list.length > 0) {
+      serverCarteira = list.map((item: any) => ({
+        'Grupo Economico': String(item['Grupo Economico'] || item.grupoEconomico || item.grupo || '').trim(),
+        'Nome Cliente': String(item['Nome Cliente'] || item.nomeCliente || item.cliente || '').trim(),
+        'Comercial': String(item['Comercial'] || item.comercial || '').trim(),
+      })).filter((item) => item.Comercial || item['Nome Cliente'] || item['Grupo Economico']);
+
+      saveServerCarteira();
+      console.log(`[METARH Carteira Sync] Successfully loaded ${serverCarteira.length} assignments from Google Apps Script.`);
+      return serverCarteira;
+    }
+  } catch (err: any) {
+    console.warn('[METARH Carteira Sync] Warning fetching carteira:', err.message);
+  }
+  return serverCarteira;
+}
+
+// Automatically fetch carteira on startup if empty
+if (!serverCarteira || serverCarteira.length === 0) {
+  fetchCarteiraFromGoogleScript().catch((err) =>
+    console.warn('[METARH Carteira Sync] Initial fetch warning:', err.message)
+  );
+}
+
 function loadServerUsers() {
   try {
     if (fs.existsSync(USERS_DB_PATH)) {
@@ -188,6 +229,75 @@ function saveServerUsers() {
 }
 
 loadServerUsers();
+
+async function fetchUsersFromGoogleScript() {
+  console.log('[METARH Users Sync] Fetching users from Google Apps Script...');
+  try {
+    const response = await fetch(`${APPS_SCRIPT_USER_URL}?action=getUsers&t=${Date.now()}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Accept': 'application/json, text/plain, */*'
+      },
+      signal: AbortSignal.timeout(30000)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Google Script Users HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+    if (Array.isArray(list) && list.length > 0) {
+      const userMap = new Map<string, any>();
+      // Preserve existing server users
+      serverUsers.forEach((u) => {
+        if (u && u.username) {
+          userMap.set(u.username.toLowerCase().trim(), u);
+        }
+      });
+
+      list.forEach((u: any) => {
+        if (!u) return;
+        const uname = String(u.username || u.usuario || u.user || '').trim();
+        const unameLower = uname.toLowerCase();
+        if (
+          !uname ||
+          unameLower === 'usuário' ||
+          unameLower === 'usuario' ||
+          unameLower === 'username' ||
+          unameLower === '[object object]'
+        ) {
+          return;
+        }
+
+        if (!userMap.has(unameLower)) {
+          userMap.set(unameLower, {
+            id: String(u.id || unameLower || Date.now()),
+            username: uname,
+            password: String(u.password || u.senha || '123').trim(),
+            role: u.role || u.nivel || u.nivelAcesso || 'Colaborador',
+            grupoEconomico: u.grupoEconomico || u.grupo || '',
+            createdAt: u.createdAt || new Date().toISOString(),
+          });
+        }
+      });
+
+      serverUsers = Array.from(userMap.values());
+      saveServerUsers();
+      console.log(`[METARH Users Sync] Successfully synced ${serverUsers.length} users.`);
+    }
+  } catch (err: any) {
+    console.warn('[METARH Users Sync] Warning fetching remote users:', err.message);
+  }
+  return serverUsers;
+}
+
+// Fetch remote users if serverUsers only contains admin Leandro
+if (!serverUsers || serverUsers.length <= 1) {
+  fetchUsersFromGoogleScript().catch((err) =>
+    console.warn('[METARH Users Sync] Initial fetch warning:', err.message)
+  );
+}
 
 async function triggerGoogleScriptUserSync(query: any, body: any) {
   try {
@@ -385,11 +495,20 @@ app.all('/api/commercial-assignments', async (req, res) => {
     }
 
     // Default action: getAssignments
+    if (serverCarteira.length === 0 || req.query.refresh === 'true') {
+      await fetchCarteiraFromGoogleScript();
+    }
+
     if (comercialFilter) {
       const comercialLower = comercialFilter.toLowerCase();
-      const filtered = serverCarteira.filter(
-        (i) => String(i.Comercial || '').trim().toLowerCase() === comercialLower
-      );
+      const filtered = serverCarteira.filter((i) => {
+        const itemRep = String(i.Comercial || '').trim().toLowerCase();
+        return (
+          itemRep === comercialLower ||
+          itemRep.includes(comercialLower) ||
+          comercialLower.includes(itemRep)
+        );
+      });
       return res.json({ success: true, comercial: comercialFilter, data: filtered });
     }
 

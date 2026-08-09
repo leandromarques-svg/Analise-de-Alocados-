@@ -5,6 +5,7 @@ import {
   analyzePortfolioForPeriod,
   saveClientAssignment,
   getClientAssignments,
+  syncCommercialAssignmentsServer,
 } from '../../utils/commercialUtils';
 import { CommercialAnalyticsCharts } from '../CommercialAnalyticsCharts';
 import { ExecutiveReportModal } from '../ExecutiveReportModal';
@@ -72,16 +73,11 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
   const [commercialUsers, setCommercialUsers] = useState<User[]>([]);
   const [selectedRepUsername, setSelectedRepUsername] = useState<string>(currentUser.username);
 
-  // Load commercial reps list for Gestor/Admin
+  // Load commercial reps list for Gestor/Admin (Executivos Comerciais only)
   useEffect(() => {
     if (isGestorOrAdmin) {
       getUsers().then((users) => {
-        const reps = users.filter(
-          (u) =>
-            u.role === 'Comercial' ||
-            u.role === 'Gerencial Comercial' ||
-            u.role === 'Administrador'
-        );
+        const reps = users.filter((u) => u.role === 'Comercial');
         setCommercialUsers(reps);
       });
     }
@@ -115,6 +111,7 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
   // Keep assignedClients state in sync when selected rep profile or remote assignments update
   useEffect(() => {
     let isMounted = true;
+    syncCommercialAssignmentsServer().catch(() => {});
     setAssignedClients(initialClients);
 
     // Also attempt fetching from dedicated commercial assignments DB

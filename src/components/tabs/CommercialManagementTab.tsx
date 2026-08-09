@@ -84,9 +84,14 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
     loadCommercialUsers();
   }, []);
 
-  // Commercial reps list
+  // Commercial reps list (Executivos Comerciais de Vendas)
   const commercialReps = useMemo(() => {
-    return users.filter((u) => u.role === 'Comercial' || u.role === 'Gerencial Comercial');
+    return users.filter((u) => u.role === 'Comercial');
+  }, [users]);
+
+  // Gestão Comercial & Diretoria (Supervisão global, sem carteira direta)
+  const managementUsers = useMemo(() => {
+    return users.filter((u) => u.role === 'Gerencial Comercial' || u.role === 'Administrador');
   }, [users]);
 
   // Full inactivity client list
@@ -265,6 +270,40 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
     assignments,
   ]);
 
+  // Macro metrics for Dona Biga (Admitidos, Demitidos, Prorrogações)
+  const macroStats = useMemo(() => {
+    const totalAdmitidosHistorico = data.length;
+    const activeWorkers = data.filter((w) => w.isAtivo);
+    const totalActiveHeadcount = activeWorkers.length;
+    const totalDemitidos = data.filter(
+      (w) => !w.isAtivo || (w.dataDemissao && w.dataDemissao !== '-') || w.anoDemissao !== null
+    ).length;
+
+    const totalProrrogacoes = data.filter((w) => {
+      const p = w.dataVctoProrrogacao;
+      return p && String(p).trim() !== '' && String(p).trim() !== '-';
+    }).length;
+
+    const totalTemporarios = activeWorkers.filter((w) => {
+      const v = (w.vinculo || '').toLowerCase();
+      return v.includes('temp') || v.includes('6094');
+    }).length;
+
+    const totalCLT = activeWorkers.filter((w) => {
+      const v = (w.vinculo || '').toLowerCase();
+      return v.includes('clt') || v.includes('efetiv');
+    }).length;
+
+    return {
+      totalAdmitidosHistorico,
+      totalActiveHeadcount,
+      totalDemitidos,
+      totalProrrogacoes,
+      totalTemporarios,
+      totalCLT,
+    };
+  }, [data]);
+
   // Total unassigned clients
   const unassignedCount = useMemo(() => {
     return clientList.filter((c) => !assignments[c.clientName]).length;
@@ -333,6 +372,70 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
           <span>{msg}</span>
         </div>
       )}
+
+      {/* Visão Macro da Diretoria (Dona Biga): Admitidos, Demitidos e Prorrogações */}
+      <div className="bg-gradient-to-br from-slate-900 to-[#1e0735] text-white p-6 rounded-3xl shadow-lg border border-purple-800/80 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-800/80 pb-3">
+          <div>
+            <h2 className="text-base font-black text-purple-200 uppercase tracking-wide flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-emerald-400" />
+              Visão Macro para a Diretoria (Dona Biga): Alocados Admitidos, Demitidos & Prorrogações
+            </h2>
+            <p className="text-xs text-purple-300 font-medium">
+              Acompanhamento gerencial consolidado de volume de alocados, rotatividade e extensão contratual.
+            </p>
+          </div>
+          <button
+            onClick={() => setIsReportModalOpen(true)}
+            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-xl transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer shadow-md"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Gerar PDF Completo</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          
+          {/* Card 1: Admitidos */}
+          <div className="bg-white/10 p-4 rounded-2xl border border-white/10 space-y-1 backdrop-blur-md">
+            <span className="text-[10px] font-black uppercase text-purple-200 tracking-wider block">1. Alocados Admitidos</span>
+            <div className="text-2xl font-black text-white">{macroStats.totalActiveHeadcount.toLocaleString('pt-BR')}</div>
+            <div className="text-[11px] text-slate-300 font-medium space-y-0.5 pt-1 border-t border-white/10">
+              <div>• Ativos em Operação: <strong className="text-emerald-300">{macroStats.totalActiveHeadcount}</strong></div>
+              <div>• Histórico Total na Base: <strong className="text-white">{macroStats.totalAdmitidosHistorico.toLocaleString('pt-BR')}</strong></div>
+            </div>
+          </div>
+
+          {/* Card 2: Demitidos */}
+          <div className="bg-white/10 p-4 rounded-2xl border border-white/10 space-y-1 backdrop-blur-md">
+            <span className="text-[10px] font-black uppercase text-purple-200 tracking-wider block">2. Alocados Demitidos / Desligados</span>
+            <div className="text-2xl font-black text-rose-300">{macroStats.totalDemitidos.toLocaleString('pt-BR')}</div>
+            <div className="text-[11px] text-slate-300 font-medium space-y-0.5 pt-1 border-t border-white/10">
+              <div>• Desligamentos Registrados: <strong className="text-rose-300">{macroStats.totalDemitidos.toLocaleString('pt-BR')}</strong></div>
+              <div>• Taxa de Atividade: <strong className="text-emerald-300">{((macroStats.totalActiveHeadcount / macroStats.totalAdmitidosHistorico) * 100).toFixed(1)}%</strong></div>
+            </div>
+          </div>
+
+          {/* Card 3: Prorrogações */}
+          <div className="bg-white/10 p-4 rounded-2xl border border-white/10 space-y-1 backdrop-blur-md">
+            <span className="text-[10px] font-black uppercase text-purple-200 tracking-wider block">3. Prorrogações & Contratos</span>
+            <div className="text-2xl font-black text-amber-300">{macroStats.totalProrrogacoes.toLocaleString('pt-BR')}</div>
+            <div className="text-[11px] text-slate-300 font-medium space-y-0.5 pt-1 border-t border-white/10">
+              <div>• Temporários (Lei 6.094): <strong className="text-amber-300">{macroStats.totalTemporarios}</strong></div>
+              <div>• Efetivos CLT: <strong className="text-purple-200">{macroStats.totalCLT}</strong></div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Management notice */}
+        <div className="text-[11px] text-purple-200/80 bg-purple-950/40 px-3 py-2 rounded-xl border border-purple-800/50 flex items-center gap-2">
+          <Shield className="w-4 h-4 text-purple-300 flex-shrink-0" />
+          <span>
+            <strong>Diretoria e Gestão Comercial:</strong> Os usuários <strong className="text-white">Beca (Gerencial Comercial)</strong> e <strong className="text-white">Leandro (Administrador)</strong> realizam a supervisão macro da operação MetaRH e não possuem carteira direta de clientes.
+          </span>
+        </div>
+      </div>
 
       {/* Commercial Reps Performance Comparison */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">

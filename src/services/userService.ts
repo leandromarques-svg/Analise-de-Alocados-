@@ -405,6 +405,12 @@ export const getCommercialAssignments = async (comercialUsername?: string): Prom
   }
 
   if (results.length > 0) {
+    results = results.map((item: any) => ({
+      'Grupo Economico': String(item['Grupo Economico'] || item.grupoEconomico || item.grupo || '').trim(),
+      'Nome Cliente': String(item['Nome Cliente'] || item.nomeCliente || item.cliente || '').trim(),
+      'Comercial': String(item['Comercial'] || item.comercial || '').trim(),
+    })).filter((item) => item.Comercial || item['Nome Cliente'] || item['Grupo Economico']);
+
     localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(results));
   }
 
