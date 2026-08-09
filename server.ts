@@ -176,12 +176,10 @@ async function fetchCarteiraFromGoogleScript() {
   return serverCarteira;
 }
 
-// Automatically fetch carteira on startup if empty
-if (!serverCarteira || serverCarteira.length === 0) {
-  fetchCarteiraFromGoogleScript().catch((err) =>
-    console.warn('[METARH Carteira Sync] Initial fetch warning:', err.message)
-  );
-}
+// Automatically fetch carteira on startup
+fetchCarteiraFromGoogleScript().catch((err) =>
+  console.warn('[METARH Carteira Sync] Initial fetch warning:', err.message)
+);
 
 function loadServerUsers() {
   try {
@@ -292,12 +290,10 @@ async function fetchUsersFromGoogleScript() {
   return serverUsers;
 }
 
-// Fetch remote users if serverUsers only contains admin Leandro
-if (!serverUsers || serverUsers.length <= 1) {
-  fetchUsersFromGoogleScript().catch((err) =>
-    console.warn('[METARH Users Sync] Initial fetch warning:', err.message)
-  );
-}
+// Fetch remote users on startup
+fetchUsersFromGoogleScript().catch((err) =>
+  console.warn('[METARH Users Sync] Initial fetch warning:', err.message)
+);
 
 async function triggerGoogleScriptUserSync(query: any, body: any) {
   try {
@@ -472,18 +468,30 @@ app.all('/api/commercial-assignments', async (req, res) => {
 
       // Asynchronously trigger Google Apps Script Web App sync
       try {
+        const rawCli = req.body?.clientes || [];
+        const rawGrp = req.body?.grupos || [];
+        const clientesStr = Array.isArray(rawCli) ? rawCli.join(',') : String(rawCli || '');
+        const gruposStr = Array.isArray(rawGrp) ? rawGrp.join(',') : String(rawGrp || '');
+
         const params = new URLSearchParams();
         params.append('action', 'saveAssignments');
         params.append('comercial', comercial);
-        params.append('clientes', JSON.stringify(req.body?.clientes || []));
-        params.append('grupos', JSON.stringify(req.body?.grupos || []));
-        params.append('mappings', JSON.stringify(req.body?.mappings || {}));
+        params.append('clientes', clientesStr);
+        params.append('grupos', gruposStr);
+        params.append('t', String(Date.now()));
 
         fetch(`${APPS_SCRIPT_CARTEIRA_URL}?${params.toString()}`, {
           method: 'GET',
           headers: { 'User-Agent': 'Mozilla/5.0' },
-          signal: AbortSignal.timeout(5000),
-        }).catch(() => {});
+          signal: AbortSignal.timeout(10000),
+        })
+          .then((r) => r.json())
+          .then((resJson) => {
+            console.log(`[METARH Carteira Sync] Google Script save response for '${comercial}':`, resJson);
+          })
+          .catch((err) => {
+            console.warn(`[METARH Carteira Sync] Google Script save warning for '${comercial}':`, err.message);
+          });
       } catch (e) {
         // ignore background sync errors
       }

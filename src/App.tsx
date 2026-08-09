@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FuncionarioRaw, Funcionario, FilterOptions, DashboardMetrics, User } from './types';
 import { normalizeFuncionario, calculateMetrics } from './utils/dataParser';
 import { saveLocalCache, getLocalCache } from './utils/localCache';
+import { syncCommercialAssignmentsServer } from './utils/commercialUtils';
 import { getCurrentUserFromStorage, logoutUser } from './services/userService';
 import { fallbackData } from './data/mockData';
 import { Header } from './components/Header';
@@ -268,6 +269,11 @@ export default function App() {
 
   // Initial load: restore instantly from browser cache, then update in background
   useEffect(() => {
+    // Sync commercial carteira assignments database from Google Script / Server on startup
+    syncCommercialAssignmentsServer().catch((e) =>
+      console.warn('Sync de carteira comercial inicial falhou:', e)
+    );
+
     const initData = async () => {
       setIsLoading(true);
       try {

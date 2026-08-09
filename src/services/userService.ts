@@ -348,14 +348,15 @@ export const getCommercialAssignments = async (comercialUsername?: string): Prom
   // 1. Try server API (/api/commercial-assignments)
   try {
     const url = comercialUsername
-      ? `/api/commercial-assignments?comercial=${encodeURIComponent(comercialUsername)}&t=${Date.now()}`
-      : `/api/commercial-assignments?t=${Date.now()}`;
+      ? `/api/commercial-assignments?comercial=${encodeURIComponent(comercialUsername)}&refresh=true&t=${Date.now()}`
+      : `/api/commercial-assignments?refresh=true&t=${Date.now()}`;
 
     const apiRes = await fetch(url);
     if (apiRes.ok) {
       const json = await apiRes.json();
-      if (json && Array.isArray(json.data) && json.data.length > 0) {
-        results = json.data;
+      const items = json.all || json.data;
+      if (json && Array.isArray(items) && items.length > 0) {
+        results = items;
       }
     }
   } catch (e) {
@@ -440,8 +441,9 @@ export const saveCommercialAssignments = async (
     });
     if (apiRes.ok) {
       const json = await apiRes.json();
-      if (json && Array.isArray(json.data)) {
-        localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(json.data));
+      const items = json.all || json.data;
+      if (json && Array.isArray(items)) {
+        localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(items));
       }
     }
   } catch (e) {
@@ -458,10 +460,7 @@ export const saveCommercialAssignments = async (
     params.append('t', String(Date.now()));
 
     const targetUrl = `${APPS_SCRIPT_CARTEIRA_URL}?${params.toString()}`;
-    const img = new Image();
-    img.src = targetUrl;
-
-    fetch(targetUrl, { method: 'GET', mode: 'no-cors' }).catch(() => {});
+    await fetch(targetUrl, { method: 'GET' }).catch(() => {});
   } catch (e) {
     console.warn('Could not ping Apps Script Carteira URL:', e);
   }
