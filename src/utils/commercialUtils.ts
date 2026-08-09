@@ -1,4 +1,5 @@
 import { Funcionario } from '../types';
+import { APPS_SCRIPT_CARTEIRA_URL } from '../services/userService';
 
 const CLIENT_ASSIGNMENTS_KEY = 'metarh_commercial_client_assignments_v1';
 const CARTEIRA_LOCAL_KEY = 'metarh_carteira_assignments_v1';
@@ -106,7 +107,7 @@ export function saveClientAssignment(clientName: string, repUsername: string): R
     // ignore
   }
 
-  // Asynchronously trigger server API POST
+  // Asynchronously trigger server API POST or Google Apps Script ping
   if (repUsername) {
     const repClients = Object.entries(current)
       .filter(([_, r]) => r === repUsername)
@@ -121,38 +122,76 @@ export function saveClientAssignment(clientName: string, repUsername: string): R
         clientes: repClients,
         grupos: [],
       }),
-    }).catch((err) => console.warn('Background sync failed:', err));
+    }).catch(() => {});
+
+    // Direct Google Script ping (essential for Vercel / static builds)
+    const params = new URLSearchParams();
+    params.append('action', 'saveAssignments');
+    params.append('comercial', repUsername);
+    params.append('clientes', repClients.join(','));
+    params.append('grupos', '');
+    params.append('t', String(Date.now()));
+
+    fetch(`${APPS_SCRIPT_CARTEIRA_URL}?${params.toString()}`, { method: 'GET' }).catch(() => {});
   }
 
   return current;
 }
 
-// Sync assignments from server DB into local storage
+// Sync assignments from server DB or Google Apps Script into local storage
 export async function syncCommercialAssignmentsServer(): Promise<Record<string, string>> {
+  let items: any[] = [];
+
+  // 1. Try server API (/api/commercial-assignments)
   try {
     const res = await fetch(`/api/commercial-assignments?refresh=true&t=${Date.now()}`);
     if (res.ok) {
-      const json = await res.json();
-      const items = json.data || json;
-      if (Array.isArray(items) && items.length > 0) {
-        const current = getClientAssignments();
-        items.forEach((item: any) => {
-          const cli = item['Nome Cliente'] || item.nomeCliente || item.cliente;
-          const grp = item['Grupo Economico'] || item.grupoEconomico || item.grupo;
-          const rep = item['Comercial'] || item.comercial;
-          if (rep) {
-            if (cli) current[cli] = rep;
-            if (grp) current[grp] = rep;
-          }
-        });
-        localStorage.setItem(CLIENT_ASSIGNMENTS_KEY, JSON.stringify(current));
-        localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(items));
-        return current;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const json = await res.json();
+        const parsed = json.all || json.data || (Array.isArray(json) ? json : null);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          items = parsed;
+        }
       }
     }
   } catch (e) {
-    console.warn('Could not sync commercial assignments from server:', e);
+    console.warn('Could not sync commercial assignments from server API:', e);
   }
+
+  // 2. Direct fallback to Google Apps Script Web App (vital for Vercel static deployments)
+  if (items.length === 0) {
+    try {
+      const scriptUrl = `${APPS_SCRIPT_CARTEIRA_URL}?action=getAssignments&t=${Date.now()}`;
+      const res = await fetch(scriptUrl);
+      if (res.ok) {
+        const json = await res.json();
+        const parsed = Array.isArray(json) ? json : (json && Array.isArray(json.data) ? json.data : []);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          items = parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not sync commercial assignments from Google Script directly:', e);
+    }
+  }
+
+  if (items.length > 0) {
+    const current = getClientAssignments();
+    items.forEach((item: any) => {
+      const cli = item['Nome Cliente'] || item.nomeCliente || item.cliente;
+      const grp = item['Grupo Economico'] || item.grupoEconomico || item.grupo;
+      const rep = item['Comercial'] || item.comercial;
+      if (rep) {
+        if (cli) current[String(cli).trim()] = String(rep).trim();
+        if (grp) current[String(grp).trim()] = String(rep).trim();
+      }
+    });
+    localStorage.setItem(CLIENT_ASSIGNMENTS_KEY, JSON.stringify(current));
+    localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(items));
+    return current;
+  }
+
   return getClientAssignments();
 }
 

@@ -1,9 +1,9 @@
 import { User, UserRole, UserLog } from '../types';
 
 const APPS_SCRIPT_USER_URL = 'https://script.google.com/macros/s/AKfycbxvEbfCjw5prUCltIj5KWGzilUXsp-tu4fIA_ZYvr5WWJ0k4OoJL7SLOP1ZrnSCejV8/exec';
-const APPS_SCRIPT_CARTEIRA_URL = 'https://script.google.com/macros/s/AKfycbyAAGFPmP4QxDbhDLFaxvfgzKbVzFil21iSDhyXqo9dSeGweyGwBYPDPu9AaCMwz8-Yfw/exec';
+export const APPS_SCRIPT_CARTEIRA_URL = 'https://script.google.com/macros/s/AKfycbyAAGFPmP4QxDbhDLFaxvfgzKbVzFil21iSDhyXqo9dSeGweyGwBYPDPu9AaCMwz8-Yfw/exec';
 const LOCAL_STORAGE_KEY = 'metarh_users_v2';
-const CARTEIRA_LOCAL_KEY = 'metarh_carteira_assignments_v1';
+export const CARTEIRA_LOCAL_KEY = 'metarh_carteira_assignments_v1';
 const CURRENT_USER_KEY = 'metarh_current_user_v2';
 const DELETED_USERS_KEY = 'metarh_deleted_users_v2';
 
@@ -112,13 +112,16 @@ export const getUsers = async (): Promise<User[]> => {
     try {
       const apiRes = await fetch(`/api/users?action=getUsers&t=${Date.now()}`);
       if (apiRes.ok) {
-        const json = await apiRes.json();
-        if (json && Array.isArray(json.users)) {
-          remoteData = json.users;
-        } else if (json && Array.isArray(json.data)) {
-          remoteData = json.data;
-        } else if (Array.isArray(json)) {
-          remoteData = json;
+        const contentType = apiRes.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const json = await apiRes.json();
+          if (json && Array.isArray(json.users)) {
+            remoteData = json.users;
+          } else if (json && Array.isArray(json.data)) {
+            remoteData = json.data;
+          } else if (Array.isArray(json)) {
+            remoteData = json;
+          }
         }
       }
     } catch (e) {
@@ -353,26 +356,27 @@ export const getCommercialAssignments = async (comercialUsername?: string): Prom
 
     const apiRes = await fetch(url);
     if (apiRes.ok) {
-      const json = await apiRes.json();
-      const items = json.all || json.data;
-      if (json && Array.isArray(items) && items.length > 0) {
-        results = items;
+      const contentType = apiRes.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const json = await apiRes.json();
+        const items = json.all || json.data;
+        if (json && Array.isArray(items) && items.length > 0) {
+          results = items;
+        }
       }
     }
   } catch (e) {
     console.warn('Could not fetch commercial assignments from /api/commercial-assignments:', e);
   }
 
-  // 2. Direct fetch fallback from Google Apps Script Web App
+  // 2. Direct fetch fallback from Google Apps Script Web App (vital for static / Vercel builds)
   if (results.length === 0) {
     try {
       const scriptUrl = comercialUsername
         ? `${APPS_SCRIPT_CARTEIRA_URL}?action=getAssignments&comercial=${encodeURIComponent(comercialUsername)}&t=${Date.now()}`
         : `${APPS_SCRIPT_CARTEIRA_URL}?action=getAssignments&t=${Date.now()}`;
 
-      const res = await fetch(scriptUrl, {
-        headers: { Accept: 'application/json, text/plain, */*' },
-      });
+      const res = await fetch(scriptUrl);
       if (res.ok) {
         const json = await res.json();
         const items = Array.isArray(json) ? json : (json && Array.isArray(json.data) ? json.data : []);
@@ -432,6 +436,8 @@ export const saveCommercialAssignments = async (
     mappings,
   };
 
+  let savedItems: CommercialAssignment[] | null = null;
+
   // 1. Sync to server API
   try {
     const apiRes = await fetch('/api/commercial-assignments', {
@@ -440,17 +446,20 @@ export const saveCommercialAssignments = async (
       body: JSON.stringify(payload),
     });
     if (apiRes.ok) {
-      const json = await apiRes.json();
-      const items = json.all || json.data;
-      if (json && Array.isArray(items)) {
-        localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(items));
+      const contentType = apiRes.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const json = await apiRes.json();
+        const items = json.all || json.data;
+        if (json && Array.isArray(items)) {
+          savedItems = items;
+        }
       }
     }
   } catch (e) {
     console.warn('Could not post to /api/commercial-assignments:', e);
   }
 
-  // 2. Direct ping to Google Apps Script Web App
+  // 2. Direct save to Google Apps Script Web App (vital for Vercel / static builds)
   try {
     const params = new URLSearchParams();
     params.append('action', 'saveAssignments');
@@ -460,9 +469,58 @@ export const saveCommercialAssignments = async (
     params.append('t', String(Date.now()));
 
     const targetUrl = `${APPS_SCRIPT_CARTEIRA_URL}?${params.toString()}`;
-    await fetch(targetUrl, { method: 'GET' }).catch(() => {});
+    const scriptRes = await fetch(targetUrl, { method: 'GET' }).catch(() => null);
+
+    if (scriptRes && scriptRes.ok) {
+      try {
+        // Re-fetch fresh list from Google Apps Script Web App
+        const refreshUrl = `${APPS_SCRIPT_CARTEIRA_URL}?action=getAssignments&t=${Date.now()}`;
+        const refreshRes = await fetch(refreshUrl);
+        if (refreshRes.ok) {
+          const freshJson = await refreshRes.json();
+          const items = Array.isArray(freshJson) ? freshJson : (freshJson && Array.isArray(freshJson.data) ? freshJson.data : []);
+          if (Array.isArray(items) && items.length > 0) {
+            savedItems = items;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
   } catch (e) {
     console.warn('Could not ping Apps Script Carteira URL:', e);
+  }
+
+  // 3. Update local storage & client mapping
+  if (savedItems && savedItems.length > 0) {
+    localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(savedItems));
+
+    const currentAssignments: Record<string, string> = {};
+    savedItems.forEach((item: any) => {
+      const cli = item['Nome Cliente'] || item.nomeCliente || item.cliente;
+      const grp = item['Grupo Economico'] || item.grupoEconomico || item.grupo;
+      const rep = item['Comercial'] || item.comercial;
+      if (rep) {
+        if (cli) currentAssignments[String(cli).trim()] = String(rep).trim();
+        if (grp) currentAssignments[String(grp).trim()] = String(rep).trim();
+      }
+    });
+    localStorage.setItem('metarh_commercial_client_assignments_v1', JSON.stringify(currentAssignments));
+  } else {
+    // Immediate optimistic local storage update if server/script response didn't return full list
+    try {
+      const storedMapRaw = localStorage.getItem('metarh_commercial_client_assignments_v1');
+      const currentAssignments: Record<string, string> = storedMapRaw ? JSON.parse(storedMapRaw) : {};
+      clientes.forEach((cli) => {
+        if (cli) currentAssignments[String(cli).trim()] = comercialUsername;
+      });
+      grupos.forEach((grp) => {
+        if (grp) currentAssignments[String(grp).trim()] = comercialUsername;
+      });
+      localStorage.setItem('metarh_commercial_client_assignments_v1', JSON.stringify(currentAssignments));
+    } catch (e) {
+      // ignore
+    }
   }
 
   return true;
