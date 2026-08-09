@@ -498,7 +498,7 @@ export default function App() {
               currentUser?.role === 'Gerencial Comercial' ||
               currentUser?.role === 'Administrador') && (
               <div className="p-2 bg-gradient-to-r from-[#2c0d4a] via-[#401669] to-[#250a40] rounded-2xl border border-purple-900/50 shadow-sm flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2 overflow-x-auto no-scrollbar">
+                <div className="flex flex-wrap items-center gap-2 no-scrollbar">
                   <span className="text-[10px] uppercase tracking-wider font-extrabold text-purple-200 px-3 py-1.5 bg-white/10 rounded-xl flex-shrink-0 border border-white/10">
                     Módulos Comerciais:
                   </span>
@@ -509,7 +509,7 @@ export default function App() {
                       onClick={() => setActiveTab('comercial_gestao')}
                       className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
                         activeTab === 'comercial_gestao'
-                          ? 'bg-white text-[#2c0d4a] shadow-lg font-black ring-2 ring-purple-300 scale-102'
+                          ? 'bg-white text-[#2c0d4a] shadow-md font-black ring-2 ring-purple-300'
                           : 'bg-white/10 text-purple-100 hover:bg-white/20'
                       }`}
                     >
@@ -523,7 +523,7 @@ export default function App() {
                     onClick={() => setActiveTab('comercial_carteira')}
                     className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
                       activeTab === 'comercial_carteira'
-                        ? 'bg-white text-[#2c0d4a] shadow-lg font-black ring-2 ring-purple-300 scale-102'
+                        ? 'bg-white text-[#2c0d4a] shadow-md font-black ring-2 ring-purple-300'
                         : 'bg-white/10 text-purple-100 hover:bg-white/20'
                     }`}
                   >

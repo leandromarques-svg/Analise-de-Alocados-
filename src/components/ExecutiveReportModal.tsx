@@ -159,13 +159,13 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
             <div>
               <div className="flex items-center gap-2 text-xs font-black text-[#401669] tracking-widest uppercase mb-1">
                 <Shield className="w-4 h-4 text-[#9c3aff]" />
-                <span>MetaRH — Gestão Estratégica de Carteira</span>
+                <span>METARH — Gestão Estratégica de Carteira</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                 RELATÓRIO EXECUTIVO DE CARTEIRA COMERCIAL
               </h1>
               <p className="text-base font-bold text-purple-950 mt-1">
-                Apresentação à Sócia-Proprietária: <strong className="text-[#401669]">Dona Biga</strong>
+                Apresentação à Alta Administração da <strong className="text-[#401669]">METARH</strong>
               </p>
             </div>
 
@@ -183,7 +183,7 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
               Resumo Executivo para a Diretoria
             </h2>
             <p className="text-sm sm:text-base text-slate-800 font-medium leading-relaxed">
-              Este relatório apresenta a posição consolidada da carteira comercial da MetaRH. Atualmente, a empresa gerencia{' '}
+              Este relatório apresenta a posição consolidada da carteira comercial da METARH. Atualmente, a empresa gerencia{' '}
               <strong className="text-purple-950 font-black">{totalActiveHeadcount.toLocaleString('pt-BR')} colaboradores alocados ativos</strong>,
               representando um volume total de folha mensal de{' '}
               <strong className="text-emerald-950 font-black">
@@ -193,20 +193,20 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
             </p>
           </div>
 
-          {/* Macro Visões de Operação RH (Dona Biga): Admitidos, Demitidos e Prorrogações */}
+          {/* Macro Visões de Operação RH: Admitidos, Demitidos e Prorrogações */}
           <div className="bg-gradient-to-br from-slate-900 to-[#1e0735] text-white p-6 sm:p-8 rounded-3xl shadow-xl border-2 border-purple-800 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-800/80 pb-4">
               <div>
                 <h2 className="text-xl font-black text-purple-200 uppercase tracking-wide flex items-center gap-2">
                   <TrendingUp className="w-6 h-6 text-emerald-400" />
-                  Visão Macro para a Diretoria (Dona Biga): Movimentação de Alocados
+                  Visão Macro para a Diretoria: Movimentação de Alocados
                 </h2>
                 <p className="text-xs text-purple-300 font-semibold mt-0.5">
-                  Indicadores operacionais de entradas, encerramentos de contrato e extensão de vínculos na MetaRH.
+                  Indicadores operacionais de entradas, encerramentos de contrato e extensão de vínculos na METARH.
                 </p>
               </div>
               <span className="px-3 py-1 bg-purple-500/20 text-purple-200 border border-purple-400/30 font-black text-xs rounded-xl self-start sm:self-auto">
-                Consolidado Geral MetaRH
+                Consolidado Geral METARH
               </span>
             </div>
 
@@ -400,7 +400,7 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
 
           {/* Document Footer */}
           <div className="border-t-2 border-slate-300 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs font-bold text-slate-500 gap-2">
-            <div>MetaRH Inteligência Comercial — Documento Interno de Alta Administração</div>
+            <div>METARH Inteligência Comercial — Documento Interno de Alta Administração</div>
             <div>Página 1 de 1</div>
           </div>
 
