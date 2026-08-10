@@ -57,27 +57,36 @@ function saveDiskCache(data: any[], fetchedAtIso: string) {
   }
 }
 
-async function fetchFromGoogleScript() {
+async function fetchFromGoogleScript(retries = 1): Promise<any[]> {
   console.log('[METARH Sync] Initiating fetch from Google Apps Script...');
-  const response = await fetch(GOOGLE_SCRIPT_URL, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-      'Accept': 'application/json, text/plain, */*'
-    },
-    signal: AbortSignal.timeout(120000) // 2-minute timeout for large payload
-  });
+  try {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Accept': 'application/json, text/plain, */*'
+      },
+      signal: AbortSignal.timeout(300000) // 5-minute timeout for large payload
+    });
 
-  if (!response.ok) {
-    throw new Error(`Google Script HTTP ${response.status}: ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(`Google Script HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error('Formato de dados inválido ou vazio retornado pelo Google Script');
+    }
+
+    console.log(`[METARH Sync] Successfully downloaded ${data.length} records from Google Apps Script.`);
+    return data;
+  } catch (err: any) {
+    if (retries > 0) {
+      console.warn(`[METARH Sync] Fetch attempt failed (${err.message}). Retrying in 3 seconds...`);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      return fetchFromGoogleScript(retries - 1);
+    }
+    throw err;
   }
-
-  const data = await response.json();
-  if (!Array.isArray(data) || data.length === 0) {
-    throw new Error('Formato de dados inválido ou vazio retornado pelo Google Script');
-  }
-
-  console.log(`[METARH Sync] Successfully downloaded ${data.length} records from Google Apps Script.`);
-  return data;
 }
 
 async function triggerBackgroundRefresh() {
@@ -90,7 +99,7 @@ async function triggerBackgroundRefresh() {
     lastFetchTime = now;
     saveDiskCache(freshData, new Date(now).toISOString());
   } catch (err: any) {
-    console.error('[METARH Sync] Background refresh failed:', err.message);
+    console.warn('[METARH Sync] Background refresh notice (retaining active disk cache):', err.message);
   } finally {
     isFetchingInBackground = false;
   }
