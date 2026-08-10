@@ -100,6 +100,7 @@ export interface FilterOptions {
   uf: string;
   cliente: string;
   cnpj: string;
+  comercial: string;
   cargo: string;
   searchQuery: string;
   minSalario: number | '';

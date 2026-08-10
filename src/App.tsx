@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FuncionarioRaw, Funcionario, FilterOptions, DashboardMetrics, User } from './types';
 import { normalizeFuncionario, calculateMetrics } from './utils/dataParser';
 import { saveLocalCache, getLocalCache } from './utils/localCache';
-import { syncCommercialAssignmentsServer } from './utils/commercialUtils';
+import { syncCommercialAssignmentsServer, getClientAssignments } from './utils/commercialUtils';
 import { getCurrentUserFromStorage, logoutUser } from './services/userService';
 import { fallbackData } from './data/mockData';
 import { Header } from './components/Header';
@@ -33,6 +33,7 @@ const initialFilters: FilterOptions = {
   uf: '',
   cliente: '',
   cnpj: '',
+  comercial: '',
   cargo: '',
   searchQuery: '',
   minSalario: '',
@@ -346,6 +347,35 @@ export default function App() {
     return Array.from(set).sort();
   }, [roleFilteredData]);
 
+  const clientAssignmentsMap = useMemo(() => {
+    return getClientAssignments();
+  }, [roleFilteredData, lastUpdated]);
+
+  const availableComerciais = useMemo(() => {
+    const set = new Set<string>();
+
+    // Add all assigned commercial reps from carteira assignments
+    Object.values(clientAssignmentsMap).forEach((rep) => {
+      const repStr = String(rep || '').trim();
+      if (repStr) {
+        set.add(repStr);
+      }
+    });
+
+    // Default executive names
+    const defaultReps = ['Gabi Amorim', 'Carol Giorgetti', 'Leandro Marques', 'Fernanda Bastos', 'Camila Rocha'];
+    defaultReps.forEach((r) => set.add(r));
+
+    // Option for unassigned
+    set.add('Sem comercial atribuído');
+
+    return Array.from(set).sort((a, b) => {
+      if (a === 'Sem comercial atribuído') return 1;
+      if (b === 'Sem comercial atribuído') return -1;
+      return a.localeCompare(b, 'pt-BR');
+    });
+  }, [clientAssignmentsMap]);
+
   // Filtered dataset logic
   const filteredData = useMemo(() => {
     return roleFilteredData.filter((item) => {
@@ -379,6 +409,31 @@ export default function App() {
       // CNPJ
       if (filters.cnpj && item.cnpjCliente !== filters.cnpj) return false;
 
+      // Atendimento Comercial
+      const assignedRep = (
+        clientAssignmentsMap[item.nomeCliente] ||
+        (item.grupoEconomico ? clientAssignmentsMap[item.grupoEconomico] : '') ||
+        ''
+      ).trim();
+
+      if (filters.comercial) {
+        const target = filters.comercial.toLowerCase().trim();
+        const currentRep = assignedRep.toLowerCase().trim();
+
+        if (target === 'sem comercial atribuído' || target === 'sem comercial') {
+          if (currentRep !== '') return false;
+        } else {
+          if (!currentRep) return false;
+          const normTarget = target.replace(/_/g, ' ');
+          const normRep = currentRep.replace(/_/g, ' ');
+          const matches =
+            normRep === normTarget ||
+            normRep.includes(normTarget) ||
+            normTarget.includes(normRep);
+          if (!matches) return false;
+        }
+      }
+
       // Cargo
       if (filters.cargo && item.cargo !== filters.cargo) return false;
 
@@ -395,6 +450,7 @@ export default function App() {
           item.grupoEconomico.toLowerCase().includes(q) ||
           item.nomeCliente.toLowerCase().includes(q) ||
           (item.cnpjCliente && item.cnpjCliente.toLowerCase().includes(q)) ||
+          assignedRep.toLowerCase().includes(q) ||
           item.regiao.toLowerCase().includes(q) ||
           String(item.id).includes(q);
         if (!matchesSearch) return false;
@@ -402,7 +458,7 @@ export default function App() {
 
       return true;
     });
-  }, [roleFilteredData, filters]);
+  }, [roleFilteredData, filters, clientAssignmentsMap]);
 
   // Dashboard Metrics for filtered set
   const metrics = useMemo(() => calculateMetrics(filteredData), [filteredData]);
@@ -477,6 +533,7 @@ export default function App() {
           availableVinculos={availableVinculos}
           availableClientes={availableClientes}
           availableCNPJs={availableCNPJs}
+          availableComerciais={availableComerciais}
           totalFilteredCount={filteredData.length}
           totalUnfilteredCount={roleFilteredData.length}
           currentUser={currentUser}

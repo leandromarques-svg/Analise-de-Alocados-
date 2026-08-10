@@ -14,6 +14,7 @@ interface FilterBarProps {
   availableVinculos: string[];
   availableClientes: string[];
   availableCNPJs?: string[];
+  availableComerciais?: string[];
   totalFilteredCount: number;
   totalUnfilteredCount: number;
   currentUser?: User | null;
@@ -30,6 +31,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   availableVinculos,
   availableClientes,
   availableCNPJs = [],
+  availableComerciais = [],
   totalFilteredCount,
   totalUnfilteredCount,
   currentUser,
@@ -45,6 +47,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     filters.uf !== '',
     filters.cliente !== '',
     filters.cnpj !== '',
+    filters.comercial !== '',
     filters.cargo !== '',
     filters.searchQuery !== '',
   ].filter(Boolean).length;
@@ -247,6 +250,16 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             options={availableCNPJs}
             allLabel="Todos os CNPJs"
             placeholder="Buscar CNPJ..."
+          />
+
+          {/* Atendimento Comercial */}
+          <SearchableSelect
+            label="Atendimento Comercial"
+            value={filters.comercial}
+            onChange={(val) => onChange({ ...filters, comercial: val })}
+            options={availableComerciais}
+            allLabel="Todos os Executivos"
+            placeholder="Buscar comercial..."
           />
 
           {/* Quick Clear Button */}
