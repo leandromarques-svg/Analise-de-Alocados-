@@ -32,6 +32,7 @@ const initialFilters: FilterOptions = {
   regiao: '',
   uf: '',
   cliente: '',
+  cnpj: '',
   cargo: '',
   searchQuery: '',
   minSalario: '',
@@ -339,6 +340,12 @@ export default function App() {
     return Array.from(set).sort();
   }, [roleFilteredData]);
 
+  const availableCNPJs = useMemo(() => {
+    const set = new Set<string>();
+    roleFilteredData.forEach((d) => { if (d.cnpjCliente) set.add(d.cnpjCliente); });
+    return Array.from(set).sort();
+  }, [roleFilteredData]);
+
   // Filtered dataset logic
   const filteredData = useMemo(() => {
     return roleFilteredData.filter((item) => {
@@ -369,6 +376,9 @@ export default function App() {
       // Cliente
       if (filters.cliente && item.nomeCliente !== filters.cliente) return false;
 
+      // CNPJ
+      if (filters.cnpj && item.cnpjCliente !== filters.cnpj) return false;
+
       // Cargo
       if (filters.cargo && item.cargo !== filters.cargo) return false;
 
@@ -384,6 +394,7 @@ export default function App() {
           item.cargo.toLowerCase().includes(q) ||
           item.grupoEconomico.toLowerCase().includes(q) ||
           item.nomeCliente.toLowerCase().includes(q) ||
+          (item.cnpjCliente && item.cnpjCliente.toLowerCase().includes(q)) ||
           item.regiao.toLowerCase().includes(q) ||
           String(item.id).includes(q);
         if (!matchesSearch) return false;
@@ -465,6 +476,7 @@ export default function App() {
           availableUFs={availableUFs}
           availableVinculos={availableVinculos}
           availableClientes={availableClientes}
+          availableCNPJs={availableCNPJs}
           totalFilteredCount={filteredData.length}
           totalUnfilteredCount={roleFilteredData.length}
           currentUser={currentUser}

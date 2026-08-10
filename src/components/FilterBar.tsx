@@ -13,6 +13,7 @@ interface FilterBarProps {
   availableUFs: string[];
   availableVinculos: string[];
   availableClientes: string[];
+  availableCNPJs?: string[];
   totalFilteredCount: number;
   totalUnfilteredCount: number;
   currentUser?: User | null;
@@ -28,6 +29,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   availableUFs,
   availableVinculos,
   availableClientes,
+  availableCNPJs = [],
   totalFilteredCount,
   totalUnfilteredCount,
   currentUser,
@@ -42,6 +44,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     filters.regiao !== '',
     filters.uf !== '',
     filters.cliente !== '',
+    filters.cnpj !== '',
     filters.cargo !== '',
     filters.searchQuery !== '',
   ].filter(Boolean).length;
@@ -236,8 +239,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             placeholder="Buscar cliente..."
           />
 
+          {/* CNPJ do Cliente */}
+          <SearchableSelect
+            label="CNPJ do Cliente"
+            value={filters.cnpj}
+            onChange={(val) => onChange({ ...filters, cnpj: val })}
+            options={availableCNPJs}
+            allLabel="Todos os CNPJs"
+            placeholder="Buscar CNPJ..."
+          />
+
           {/* Quick Clear Button */}
-          <div className="flex items-end sm:col-span-2 lg:col-span-3 justify-end">
+          <div className="flex items-end sm:col-span-2 lg:col-span-4 justify-end pt-1">
             <button
               onClick={onReset}
               className="py-2 px-4 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-semibold text-xs rounded-lg border border-slate-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"

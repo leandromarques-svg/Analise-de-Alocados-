@@ -99,6 +99,7 @@ export interface FilterOptions {
   regiao: string;
   uf: string;
   cliente: string;
+  cnpj: string;
   cargo: string;
   searchQuery: string;
   minSalario: number | '';
