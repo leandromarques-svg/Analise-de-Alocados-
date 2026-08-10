@@ -238,6 +238,9 @@ export const CommercialAnalyticsCharts: React.FC<CommercialAnalyticsChartsProps>
                     ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
                     props.payload.name,
                   ]}
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#ffffff', fontSize: '12px', fontWeight: 'bold' }}
+                  itemStyle={{ color: '#38bdf8', fontWeight: 'bold' }}
+                  labelStyle={{ color: '#ffffff', fontWeight: '800', borderBottom: '1px solid #334155', paddingBottom: '4px', marginBottom: '4px' }}
                 />
               </PieChart>
             </ResponsiveContainer>

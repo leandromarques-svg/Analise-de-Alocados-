@@ -152,7 +152,9 @@ export const TeamProductivityCharts: React.FC<TeamProductivityChartsProps> = ({ 
                 <XAxis dataKey="name" tick={{ fontSize: 11, fontWeight: 700, fill: '#334155' }} />
                 <YAxis tick={{ fontSize: 10, fill: '#64748b' }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1e0735', borderColor: '#401669', borderRadius: '12px', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#ffffff', fontSize: '12px', fontWeight: 'bold', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)' }}
+                  itemStyle={{ color: '#f8fafc', fontWeight: 'bold' }}
+                  labelStyle={{ color: '#ffffff', fontWeight: '800', borderBottom: '1px solid #334155', paddingBottom: '4px', marginBottom: '4px' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
                 <Bar dataKey="Alocados Ativos" fill="#9c3aff" radius={[6, 6, 0, 0]} />
@@ -185,7 +187,9 @@ export const TeamProductivityCharts: React.FC<TeamProductivityChartsProps> = ({ 
                 />
                 <Tooltip
                   formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Folha Gerida']}
-                  contentStyle={{ backgroundColor: '#1e0735', borderColor: '#401669', borderRadius: '12px', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#ffffff', fontSize: '12px', fontWeight: 'bold', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)' }}
+                  itemStyle={{ color: '#38bdf8', fontWeight: 'bold' }}
+                  labelStyle={{ color: '#ffffff', fontWeight: '800', borderBottom: '1px solid #334155', paddingBottom: '4px', marginBottom: '4px' }}
                 />
                 <Bar dataKey="Folha Gerida (R$)" radius={[6, 6, 0, 0]}>
                   {folhaChartData.map((entry, index) => (
@@ -220,7 +224,9 @@ export const TeamProductivityCharts: React.FC<TeamProductivityChartsProps> = ({ 
                 />
                 <Tooltip
                   formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR')}`, 'Ticket Médio']}
-                  contentStyle={{ backgroundColor: '#1e0735', borderColor: '#401669', borderRadius: '12px', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#ffffff', fontSize: '12px', fontWeight: 'bold', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)' }}
+                  itemStyle={{ color: '#34d399', fontWeight: 'bold' }}
+                  labelStyle={{ color: '#ffffff', fontWeight: '800', borderBottom: '1px solid #334155', paddingBottom: '4px', marginBottom: '4px' }}
                 />
                 <Bar dataKey="Ticket Médio (R$)" fill="#10b981" radius={[6, 6, 0, 0]} />
               </BarChart>
@@ -247,7 +253,9 @@ export const TeamProductivityCharts: React.FC<TeamProductivityChartsProps> = ({ 
                 <XAxis dataKey="name" tick={{ fontSize: 11, fontWeight: 700, fill: '#334155' }} />
                 <YAxis tick={{ fontSize: 10, fill: '#64748b' }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1e0735', borderColor: '#401669', borderRadius: '12px', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#ffffff', fontSize: '12px', fontWeight: 'bold', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)' }}
+                  itemStyle={{ color: '#f8fafc', fontWeight: 'bold' }}
+                  labelStyle={{ color: '#ffffff', fontWeight: '800', borderBottom: '1px solid #334155', paddingBottom: '4px', marginBottom: '4px' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
                 <Bar dataKey="Contas Ativas" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />

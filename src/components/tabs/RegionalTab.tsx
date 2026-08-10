@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 import { Funcionario } from '../../types';
 import { getUFName } from '../../utils/dataParser';
-import { MapPin, Building, Users } from 'lucide-react';
+import { MapPin, Building, Users, Map as MapIcon, ListFilter } from 'lucide-react';
+import { BrazilMap, StateData } from '../BrazilMap';
 
 interface RegionalTabProps {
   data: Funcionario[];
@@ -12,8 +13,11 @@ interface RegionalTabProps {
 }
 
 export const RegionalTab: React.FC<RegionalTabProps> = ({ data, onSelectRegiao }) => {
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
+  const [selectedUF, setSelectedUF] = useState<string | null>(null);
+
   // UF Aggregation
-  const ufMap: { [uf: string]: { uf: string; total: number; ativos: number; desligados: number } } = {};
+  const ufMap: { [uf: string]: StateData } = {};
   // City Aggregation
   const cidadeMap: { [cidade: string]: { cidade: string; regiao: string; total: number; ativos: number; desligados: number } } = {};
 
@@ -23,6 +27,11 @@ export const RegionalTab: React.FC<RegionalTabProps> = ({ data, onSelectRegiao }
     ufMap[uf].total += 1;
     if (item.isAtivo) ufMap[uf].ativos += 1;
     else ufMap[uf].desligados += 1;
+
+    // Filter cities if a specific UF is selected on the map
+    if (selectedUF && item.uf !== selectedUF) {
+      return;
+    }
 
     const reg = item.regiao || 'Não Informado';
     if (!cidadeMap[reg]) cidadeMap[reg] = { cidade: item.cidade, regiao: reg, total: 0, ativos: 0, desligados: 0 };
@@ -52,42 +61,95 @@ export const RegionalTab: React.FC<RegionalTabProps> = ({ data, onSelectRegiao }
         </p>
       </div>
 
-      {/* Grid: Top Estados vs Top Cidades Bar Chart */}
+      {/* Grid: Top Estados (Mapa ou Lista) vs Top Cidades Bar Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* UF Distribution Donut/Cards */}
-        <div className="bg-white p-6 rounded-2xl shadow-md border border-[#e8d8f5]">
-          <h3 className="text-lg font-bold text-[#470082] mb-4 flex items-center gap-2">
-            <Building className="w-5 h-5 text-[#9f04d4]" />
-            Alocações por Estado (UF)
-          </h3>
+        {/* UF Distribution Vector Map / Cards Container */}
+        <div className="bg-white p-6 rounded-2xl shadow-md border border-[#e8d8f5] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[#470082] flex items-center gap-2">
+                <Building className="w-5 h-5 text-[#9f04d4]" />
+                Alocações por Estado (UF)
+              </h3>
 
-          <div className="space-y-3">
-            {ufList.map((item, idx) => {
-              const percent = Math.round((item.total / (data.length || 1)) * 1000) / 10;
-              const ufName = getUFName(item.uf);
-              return (
-                <div key={item.uf} className="p-3 bg-[#faf6fd] rounded-xl border border-[#f0d4fc] flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="w-9 h-9 rounded-xl font-extrabold text-xs text-white flex items-center justify-center shadow-xs flex-shrink-0"
-                      style={{ backgroundColor: UF_COLORS[idx % UF_COLORS.length] }}
+              {/* View Mode Switcher Button */}
+              <div className="flex items-center bg-purple-100 p-1 rounded-xl border border-purple-200">
+                <button
+                  onClick={() => setViewMode('map')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    viewMode === 'map'
+                      ? 'bg-[#470082] text-white shadow-xs'
+                      : 'text-[#78549e] hover:text-[#470082]'
+                  }`}
+                  title="Ver Mapa Vetorial do Brasil"
+                >
+                  <MapIcon className="w-3.5 h-3.5" />
+                  <span>Mapa</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    viewMode === 'list'
+                      ? 'bg-[#470082] text-white shadow-xs'
+                      : 'text-[#78549e] hover:text-[#470082]'
+                  }`}
+                  title="Ver Lista de Estados"
+                >
+                  <ListFilter className="w-3.5 h-3.5" />
+                  <span>Lista</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Interactive Vector Map Mode */}
+            {viewMode === 'map' ? (
+              <BrazilMap
+                ufData={ufMap}
+                totalWorkers={data.length}
+                selectedUF={selectedUF}
+                onSelectUF={(uf) => setSelectedUF(uf)}
+              />
+            ) : (
+              /* Ranking List Mode */
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 no-scrollbar">
+                {ufList.map((item, idx) => {
+                  const percent = Math.round((item.total / (data.length || 1)) * 1000) / 10;
+                  const ufName = getUFName(item.uf);
+                  const isSelected = selectedUF === item.uf;
+
+                  return (
+                    <div
+                      key={item.uf}
+                      onClick={() => setSelectedUF(isSelected ? null : item.uf)}
+                      className={`p-3 rounded-xl border transition-all flex items-center justify-between cursor-pointer ${
+                        isSelected
+                          ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-300 shadow-sm'
+                          : 'bg-[#faf6fd] border-[#f0d4fc] hover:bg-[#f3e5fa]'
+                      }`}
                     >
-                      {item.uf}
-                    </span>
-                    <div>
-                      <p className="text-xs font-bold text-[#470082]">{ufName} ({item.uf})</p>
-                      <p className="text-[10px] text-[#78549e]">{item.ativos} Ativos / {item.desligados} Desligados</p>
-                    </div>
-                  </div>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="w-9 h-9 rounded-xl font-extrabold text-xs text-white flex items-center justify-center shadow-xs flex-shrink-0"
+                          style={{ backgroundColor: UF_COLORS[idx % UF_COLORS.length] }}
+                        >
+                          {item.uf}
+                        </span>
+                        <div>
+                          <p className="text-xs font-bold text-[#470082]">{ufName} ({item.uf})</p>
+                          <p className="text-[10px] text-[#78549e]">{item.ativos} Ativos / {item.desligados} Desligados</p>
+                        </div>
+                      </div>
 
-                  <div className="text-right">
-                    <p className="text-sm font-extrabold text-[#470082]">{item.total.toLocaleString('pt-BR')}</p>
-                    <p className="text-[10px] text-[#9f04d4] font-bold">{percent}%</p>
-                  </div>
-                </div>
-              );
-            })}
+                      <div className="text-right">
+                        <p className="text-sm font-extrabold text-[#470082]">{item.total.toLocaleString('pt-BR')}</p>
+                        <p className="text-[10px] text-[#9f04d4] font-bold">{percent}%</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
