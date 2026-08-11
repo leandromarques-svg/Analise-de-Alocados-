@@ -1,12 +1,28 @@
 import React from 'react';
-import { Search, Filter, X, RotateCcw, ChevronDown, Lock } from 'lucide-react';
+import { Search, Filter, X, RotateCcw, ChevronDown, Lock, BarChart3 } from 'lucide-react';
 import { FilterOptions, User } from '../types';
 import { SearchableSelect } from './SearchableSelect';
+
+const MONTH_OPTIONS = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+];
 
 interface FilterBarProps {
   filters: FilterOptions;
   onChange: (newFilters: FilterOptions) => void;
   onReset: () => void;
+  onOpenYearComparison?: () => void;
   availableGrupos: string[];
   availableAnos: number[];
   availableRegioes: string[];
@@ -24,6 +40,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   filters,
   onChange,
   onReset,
+  onOpenYearComparison,
   availableGrupos,
   availableAnos,
   availableRegioes,
@@ -43,6 +60,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     filters.grupoEconomico !== '',
     filters.vinculo !== '',
     filters.ano !== '',
+    filters.mes !== '',
     filters.regiao !== '',
     filters.uf !== '',
     filters.cliente !== '',
@@ -202,6 +220,16 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             placeholder="Buscar ano..."
           />
 
+          {/* Mês de Admissão / Evento */}
+          <SearchableSelect
+            label="Mês de Admissão / Evento"
+            value={filters.mes}
+            onChange={(val) => onChange({ ...filters, mes: val })}
+            options={MONTH_OPTIONS}
+            allLabel="Todos os Meses"
+            placeholder="Buscar mês..."
+          />
+
           {/* Região / Cidade */}
           <SearchableSelect
             label="Região / Cidade"
@@ -262,8 +290,19 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             placeholder="Buscar comercial..."
           />
 
-          {/* Quick Clear Button */}
-          <div className="flex items-end sm:col-span-2 lg:col-span-4 justify-end pt-1">
+          {/* Quick Clear & Compare Buttons */}
+          <div className="flex items-end sm:col-span-2 lg:col-span-4 justify-end gap-2 pt-1">
+            {onOpenYearComparison && (
+              <button
+                onClick={onOpenYearComparison}
+                className="py-2 px-4 bg-purple-100 hover:bg-purple-200 text-[#470082] font-extrabold text-xs rounded-lg border border-purple-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Abrir relatório comparativo entre dois anos"
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-[#ff27f9]" />
+                <span>Comparar Anos</span>
+              </button>
+            )}
+
             <button
               onClick={onReset}
               className="py-2 px-4 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-semibold text-xs rounded-lg border border-slate-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"

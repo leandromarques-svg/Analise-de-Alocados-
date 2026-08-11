@@ -4,12 +4,13 @@ import {
 } from 'recharts';
 import { Funcionario } from '../../types';
 import { parseDateDetails } from '../../utils/dataParser';
-import { Calendar, TrendingUp, UserX, ArrowLeft } from 'lucide-react';
+import { Calendar, TrendingUp, UserX, ArrowLeft, BarChart3 } from 'lucide-react';
 
 interface TemporalTabProps {
   data: Funcionario[];
   selectedAnoFilter?: string;
   onSelectAno?: (ano: string) => void;
+  onOpenYearComparison?: () => void;
 }
 
 const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -18,6 +19,7 @@ export const TemporalTab: React.FC<TemporalTabProps> = ({
   data,
   selectedAnoFilter = '',
   onSelectAno,
+  onOpenYearComparison,
 }) => {
   const [selectedYearRange, setSelectedYearRange] = useState<string>('all');
   const [localSelectedYear, setLocalSelectedYear] = useState<number | null>(
@@ -129,7 +131,17 @@ export const TemporalTab: React.FC<TemporalTabProps> = ({
         </div>
 
         {/* Action controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {onOpenYearComparison && (
+            <button
+              onClick={onOpenYearComparison}
+              className="px-3.5 py-1.5 text-xs font-black bg-gradient-to-r from-[#470082] to-[#7812b3] hover:from-[#350062] hover:to-[#5e0e8e] text-white rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 border border-[#470082]"
+            >
+              <BarChart3 className="w-4 h-4 text-[#ff27f9]" />
+              <span>Comparar Anos (Ano vs Ano)</span>
+            </button>
+          )}
+
           {activeYear && (
             <button
               onClick={() => handleSelectYear(null)}

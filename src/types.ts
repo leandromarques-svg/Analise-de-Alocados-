@@ -96,6 +96,7 @@ export interface FilterOptions {
   grupoEconomico: string;
   vinculo: string;
   ano: string;
+  mes: string;
   regiao: string;
   uf: string;
   cliente: string;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FuncionarioRaw, Funcionario, FilterOptions, DashboardMetrics, User } from './types';
-import { normalizeFuncionario, calculateMetrics } from './utils/dataParser';
+import { normalizeFuncionario, calculateMetrics, parseDateDetails } from './utils/dataParser';
 import { saveLocalCache, getLocalCache } from './utils/localCache';
 import { syncCommercialAssignmentsServer, getClientAssignments } from './utils/commercialUtils';
 import { getCurrentUserFromStorage, logoutUser } from './services/userService';
@@ -22,6 +22,7 @@ import { CommercialPortfolioTab } from './components/tabs/CommercialPortfolioTab
 import { CommercialManagementTab } from './components/tabs/CommercialManagementTab';
 import { Footer } from './components/Footer';
 import { EmployeeModal } from './components/EmployeeModal';
+import { YearComparisonModal } from './components/YearComparisonModal';
 import { LayoutDashboard, Calendar, Briefcase, Building2, MapPin, Table, AlertTriangle, UserCheck, FolderKanban, ChevronDown, BarChart3, Users, PieChart } from 'lucide-react';
 
 const initialFilters: FilterOptions = {
@@ -29,6 +30,7 @@ const initialFilters: FilterOptions = {
   grupoEconomico: '',
   vinculo: '',
   ano: '',
+  mes: '',
   regiao: '',
   uf: '',
   cliente: '',
@@ -71,6 +73,7 @@ export default function App() {
   const [isOutrosEstudosExpanded, setIsOutrosEstudosExpanded] = useState<boolean>(false);
   const [filters, setFilters] = useState<FilterOptions>(initialFilters);
   const [selectedWorker, setSelectedWorker] = useState<Funcionario | null>(null);
+  const [isYearComparisonOpen, setIsYearComparisonOpen] = useState<boolean>(false);
 
   // Safety redirect for restricted roles
   useEffect(() => {
@@ -397,6 +400,37 @@ export default function App() {
         if (!matchesAdmissao && !matchesDemissao) return false;
       }
 
+      // Mês filter
+      if (filters.mes) {
+        const MONTH_NAMES_PT = [
+          'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        let mesNum = parseInt(filters.mes, 10);
+        if (isNaN(mesNum)) {
+          const idx = MONTH_NAMES_PT.findIndex(
+            (m) => m.toLowerCase() === filters.mes.toLowerCase()
+          );
+          if (idx !== -1) mesNum = idx + 1;
+        }
+
+        if (mesNum >= 1 && mesNum <= 12) {
+          const admDetails = parseDateDetails(item.dataAdmissao);
+          const demDetails = parseDateDetails(item.dataDemissao);
+
+          let matchesAdmissao = admDetails.month === mesNum;
+          let matchesDemissao = demDetails.month === mesNum;
+
+          if (filters.ano) {
+            const anoNum = parseInt(filters.ano, 10);
+            matchesAdmissao = matchesAdmissao && item.anoAdmissao === anoNum;
+            matchesDemissao = matchesDemissao && item.anoDemissao === anoNum;
+          }
+
+          if (!matchesAdmissao && !matchesDemissao) return false;
+        }
+      }
+
       // Região
       if (filters.regiao && item.regiao !== filters.regiao) return false;
 
@@ -526,6 +560,7 @@ export default function App() {
           filters={filters}
           onChange={setFilters}
           onReset={() => setFilters(initialFilters)}
+          onOpenYearComparison={() => setIsYearComparisonOpen(true)}
           availableGrupos={availableGrupos}
           availableAnos={availableAnos}
           availableRegioes={availableRegioes}
@@ -803,6 +838,7 @@ export default function App() {
                 data={filteredData}
                 selectedAnoFilter={filters.ano}
                 onSelectAno={(ano) => setFilters({ ...filters, ano })}
+                onOpenYearComparison={() => setIsYearComparisonOpen(true)}
               />
             )}
 
@@ -858,6 +894,14 @@ export default function App() {
       <EmployeeModal
         worker={selectedWorker}
         onClose={() => setSelectedWorker(null)}
+      />
+
+      {/* Year Comparison Modal */}
+      <YearComparisonModal
+        isOpen={isYearComparisonOpen}
+        onClose={() => setIsYearComparisonOpen(false)}
+        filteredData={filteredData}
+        allData={roleFilteredData}
       />
 
       {/* User Management Modal for Admin */}
