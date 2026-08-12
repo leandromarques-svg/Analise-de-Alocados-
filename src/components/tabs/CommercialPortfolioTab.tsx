@@ -67,8 +67,7 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
   // Gestor / Admin rep selection state
   const isGestorOrAdmin =
     currentUser.role === 'Gerencial Comercial' ||
-    currentUser.role === 'Administrador' ||
-    currentUser.role === 'RH';
+    currentUser.role === 'Administrador';
 
   const [commercialUsers, setCommercialUsers] = useState<User[]>([]);
   const [selectedRepUsername, setSelectedRepUsername] = useState<string>(currentUser.username);
@@ -154,6 +153,10 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
 
   // Handler to permanently save portfolio selection to target user profile
   const handleSavePortfolioToProfile = async () => {
+    if (!isGestorOrAdmin) {
+      alert('Apenas o Administrador e o Gestor Comercial podem alterar e salvar a atribuição de carteira.');
+      return;
+    }
     setIsSavingProfile(true);
     try {
       const selectedGroupsSet = new Set<string>();
@@ -217,6 +220,11 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
 
   // Synchronize client assignments locally with ownership check
   const handleToggleClientAssignment = (clientName: string) => {
+    if (!isGestorOrAdmin) {
+      alert('Apenas o Administrador e o Gestor Comercial podem atribuir clientes e grupos econômicos.');
+      return;
+    }
+
     const allAssignments = getClientAssignments();
     const currentOwner = allAssignments[clientName];
 
@@ -238,6 +246,11 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
 
   // Toggle entire economic group (automatically selects/unselects all clients linked to this group)
   const handleToggleGrupoEconomico = (grupoName: string) => {
+    if (!isGestorOrAdmin) {
+      alert('Apenas o Administrador e o Gestor Comercial podem atribuir clientes e grupos econômicos.');
+      return;
+    }
+
     const gLower = grupoName.toLowerCase().trim();
     const clientsInGroup: string[] = Array.from(
       new Set(
@@ -443,31 +456,41 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
           {/* Selector Subtabs, Save Button & Chevron Toggle */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Save Portfolio Button */}
-            <button
-              onClick={handleSavePortfolioToProfile}
-              disabled={isSavingProfile}
-              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                isDirty
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 ring-2 ring-emerald-400/50'
-                  : 'bg-[#401669] hover:bg-[#2d0e4c] text-white'
-              }`}
-              title={`Salvar esta seleção na carteira de ${selectedRepUsername}`}
-            >
-              {isSavingProfile ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : isDirty ? (
-                <Save className="w-3.5 h-3.5" />
-              ) : (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-              )}
-              <span>
-                {isSavingProfile
-                  ? 'Salvando...'
-                  : isDirty
-                  ? `Salvar em ${selectedRepUsername === currentUser.username ? 'Meu Perfil' : selectedRepUsername}`
-                  : 'Carteira Salva'}
-              </span>
-            </button>
+            {isGestorOrAdmin ? (
+              <button
+                onClick={handleSavePortfolioToProfile}
+                disabled={isSavingProfile}
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                  isDirty
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 ring-2 ring-emerald-400/50'
+                    : 'bg-[#401669] hover:bg-[#2d0e4c] text-white'
+                }`}
+                title={`Salvar esta seleção na carteira de ${selectedRepUsername}`}
+              >
+                {isSavingProfile ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : isDirty ? (
+                  <Save className="w-3.5 h-3.5" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                )}
+                <span>
+                  {isSavingProfile
+                    ? 'Salvando...'
+                    : isDirty
+                    ? `Salvar em ${selectedRepUsername === currentUser.username ? 'Meu Perfil' : selectedRepUsername}`
+                    : 'Carteira Salva'}
+                </span>
+              </button>
+            ) : (
+              <div
+                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1.5"
+                title="Apenas o Administrador e o Gestor Comercial podem alterar atribuições de clientes."
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                <span>Carteira Definida pelo Gestor</span>
+              </div>
+            )}
 
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
               <button

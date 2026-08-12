@@ -101,6 +101,15 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
 
   // Handle reassigning a client to a commercial rep
   const handleAssignRep = async (clientName: string, repUsername: string) => {
+    const isCanAssign =
+      currentUser.role === 'Gerencial Comercial' ||
+      currentUser.role === 'Administrador';
+
+    if (!isCanAssign) {
+      alert('Apenas o Administrador e o Gestor Comercial podem atribuir clientes e grupos econômicos.');
+      return;
+    }
+
     const previousRepUsername = assignments[clientName];
 
     const updatedAssignments = saveClientAssignment(clientName, repUsername);
@@ -634,8 +643,7 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
                 const assignedRep = assignments[client.clientName] || '';
                 const isGestorOrAdmin =
                   currentUser.role === 'Gerencial Comercial' ||
-                  currentUser.role === 'Administrador' ||
-                  currentUser.role === 'RH';
+                  currentUser.role === 'Administrador';
                 const isAssignedToOther = Boolean(assignedRep && assignedRep !== currentUser.username);
 
                 return (
@@ -675,11 +683,17 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
                       )}
                     </td>
                     <td className="p-3">
-                      {isAssignedToOther && !isGestorOrAdmin ? (
-                        <div className="px-2.5 py-1.5 text-xs font-bold rounded-xl border bg-slate-100 text-slate-500 border-slate-200 flex items-center justify-between gap-1 shadow-xs" title="Apenas o gestor comercial pode alterar um cliente já atribuído a outro executivo.">
-                          <span className="truncate">Atribuído: <strong className="text-purple-900">{assignedRep}</strong></span>
-                          <Shield className="w-3.5 h-3.5 text-purple-700 flex-shrink-0" />
-                        </div>
+                      {!isGestorOrAdmin ? (
+                        assignedRep ? (
+                          <div className="px-2.5 py-1.5 text-xs font-bold rounded-xl border bg-purple-50 text-[#401669] border-purple-200 flex items-center justify-between gap-1 shadow-xs" title="Apenas o Administrador e Gestor Comercial podem alterar atribuições de clientes.">
+                            <span className="truncate">Atribuído: <strong className="text-purple-900">{assignedRep}</strong></span>
+                            <Shield className="w-3.5 h-3.5 text-purple-700 flex-shrink-0" />
+                          </div>
+                        ) : (
+                          <div className="px-2.5 py-1.5 text-xs font-semibold rounded-xl border bg-slate-100 text-slate-500 border-slate-200 flex items-center gap-1">
+                            <span>Sem Proprietário</span>
+                          </div>
+                        )
                       ) : (
                         <select
                           value={assignedRep}
@@ -691,18 +705,11 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
                           }`}
                         >
                           <option value="">-- Sem Proprietário --</option>
-                          {isGestorOrAdmin
-                            ? commercialReps.map((r) => (
-                                <option key={r.username} value={r.username}>
-                                  Atribuir para: {r.username}
-                                </option>
-                              ))
-                            : (
-                              <option value={currentUser.username}>
-                                Atribuir para mim ({currentUser.username})
-                              </option>
-                            )
-                          }
+                          {commercialReps.map((r) => (
+                            <option key={r.username} value={r.username}>
+                              Atribuir para: {r.username}
+                            </option>
+                          ))}
                         </select>
                       )}
                     </td>

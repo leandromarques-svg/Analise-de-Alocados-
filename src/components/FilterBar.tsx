@@ -186,7 +186,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       {isExpanded && (
         <div className="mt-4 pt-4 border-t border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-fadeIn">
           
-          {/* Grupo Econômico Select */}
+          {/* 1. Grupo Econômico Select */}
           {currentUser?.role === 'Cliente' && currentUser.grupoEconomico ? (
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
@@ -210,57 +210,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             />
           )}
 
-          {/* Ano (Admissão / Demissão) */}
-          <SearchableSelect
-            label="Ano de Admissão / Evento"
-            value={filters.ano}
-            onChange={(val) => onChange({ ...filters, ano: val })}
-            options={availableAnos.map(String)}
-            allLabel="Todos os Anos"
-            placeholder="Buscar ano..."
-          />
-
-          {/* Mês de Admissão / Evento */}
-          <SearchableSelect
-            label="Mês de Admissão / Evento"
-            value={filters.mes}
-            onChange={(val) => onChange({ ...filters, mes: val })}
-            options={MONTH_OPTIONS}
-            allLabel="Todos os Meses"
-            placeholder="Buscar mês..."
-          />
-
-          {/* Região / Cidade */}
-          <SearchableSelect
-            label="Região / Cidade"
-            value={filters.regiao}
-            onChange={(val) => onChange({ ...filters, regiao: val })}
-            options={availableRegioes}
-            allLabel="Todas as Regiões"
-            placeholder="Buscar região/cidade..."
-          />
-
-          {/* Estado (UF) */}
-          <SearchableSelect
-            label="Estado (UF)"
-            value={filters.uf}
-            onChange={(val) => onChange({ ...filters, uf: val })}
-            options={availableUFs}
-            allLabel="Todos os Estados (UF)"
-            placeholder="Buscar estado..."
-          />
-
-          {/* Vínculo Empregatício */}
-          <SearchableSelect
-            label="Vínculo Empregatício"
-            value={filters.vinculo}
-            onChange={(val) => onChange({ ...filters, vinculo: val })}
-            options={availableVinculos}
-            allLabel="Todos os Vínculos"
-            placeholder="Buscar vínculo..."
-          />
-
-          {/* Nome Cliente / Empresa */}
+          {/* 2. Nome Cliente / Empresa */}
           <SearchableSelect
             label="Empresa / Cliente"
             value={filters.cliente}
@@ -270,7 +220,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             placeholder="Buscar cliente..."
           />
 
-          {/* CNPJ do Cliente */}
+          {/* 3. CNPJ do Cliente */}
           <SearchableSelect
             label="CNPJ do Cliente"
             value={filters.cnpj}
@@ -280,7 +230,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             placeholder="Buscar CNPJ..."
           />
 
-          {/* Atendimento Comercial */}
+          {/* 4. Atendimento Comercial */}
           <SearchableSelect
             label="Atendimento Comercial"
             value={filters.comercial}
@@ -290,8 +240,58 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             placeholder="Buscar comercial..."
           />
 
+          {/* 5. Ano (Admissão / Demissão) */}
+          <SearchableSelect
+            label="Ano de Admissão / Evento"
+            value={filters.ano}
+            onChange={(val) => onChange({ ...filters, ano: val })}
+            options={availableAnos.map(String)}
+            allLabel="Todos os Anos"
+            placeholder="Buscar ano..."
+          />
+
+          {/* 6. Mês de Admissão / Evento */}
+          <SearchableSelect
+            label="Mês de Admissão / Evento"
+            value={filters.mes}
+            onChange={(val) => onChange({ ...filters, mes: val })}
+            options={MONTH_OPTIONS}
+            allLabel="Todos os Meses"
+            placeholder="Buscar mês..."
+          />
+
+          {/* 7. Vínculo Empregatício */}
+          <SearchableSelect
+            label="Vínculo Empregatício"
+            value={filters.vinculo}
+            onChange={(val) => onChange({ ...filters, vinculo: val })}
+            options={availableVinculos}
+            allLabel="Todos os Vínculos"
+            placeholder="Buscar vínculo..."
+          />
+
+          {/* 8. Estado (UF) */}
+          <SearchableSelect
+            label="Estado (UF)"
+            value={filters.uf}
+            onChange={(val) => onChange({ ...filters, uf: val })}
+            options={availableUFs}
+            allLabel="Todos os Estados (UF)"
+            placeholder="Buscar estado..."
+          />
+
+          {/* 9. Região / Cidade */}
+          <SearchableSelect
+            label="Região / Cidade"
+            value={filters.regiao}
+            onChange={(val) => onChange({ ...filters, regiao: val })}
+            options={availableRegioes}
+            allLabel="Todas as Regiões"
+            placeholder="Buscar região/cidade..."
+          />
+
           {/* Quick Clear & Compare Buttons */}
-          <div className="flex items-end sm:col-span-2 lg:col-span-4 justify-end gap-2 pt-1">
+          <div className="flex items-end sm:col-span-1 lg:col-span-3 justify-end gap-2 pt-1">
             {onOpenYearComparison && (
               <button
                 onClick={onOpenYearComparison}
