@@ -20,6 +20,7 @@ import { ContractExpirationsTab } from './components/tabs/ContractExpirationsTab
 import { TalentBankTab } from './components/tabs/TalentBankTab';
 import { CommercialPortfolioTab } from './components/tabs/CommercialPortfolioTab';
 import { CommercialManagementTab } from './components/tabs/CommercialManagementTab';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Footer } from './components/Footer';
 import { EmployeeModal } from './components/EmployeeModal';
 import { YearComparisonModal } from './components/YearComparisonModal';
@@ -794,11 +795,11 @@ export default function App() {
             <p className="text-xs text-slate-500 mt-1">Buscando base de alocações e movimentações do Google Apps Script em tempo real.</p>
           </div>
         ) : (
-          <>
+          <ErrorBoundary key={activeTab}>
             {activeTab === 'comercial_carteira' && (
               <CommercialPortfolioTab
                 data={roleFilteredData}
-                currentUser={currentUser}
+                currentUser={currentUser!}
                 availableClientes={availableClientes}
                 onSelectWorker={(w) => setSelectedWorker(w)}
                 onSelectClient={(clientName) => {
@@ -812,7 +813,7 @@ export default function App() {
             {activeTab === 'comercial_gestao' && (
               <CommercialManagementTab
                 data={data}
-                currentUser={currentUser}
+                currentUser={currentUser!}
               />
             )}
 
@@ -885,7 +886,7 @@ export default function App() {
                 onExportCSV={exportCSV}
               />
             )}
-          </>
+          </ErrorBoundary>
         )}
 
       </main>

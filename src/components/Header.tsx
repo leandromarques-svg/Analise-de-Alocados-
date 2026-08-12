@@ -73,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
             {currentUser && (
               <div className="flex items-center gap-2 bg-[#faf6fd] border border-[#e8d8f5] px-3 py-1.5 rounded-xl text-xs font-semibold text-[#401669]">
                 <div className="w-6 h-6 rounded-lg bg-[#401669] text-white flex items-center justify-center font-bold text-[10px]">
-                  {currentUser.username.substring(0, 2).toUpperCase()}
+                  {(currentUser.username || 'US').substring(0, 2).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">

@@ -171,7 +171,7 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
 
             <div className="text-left sm:text-right text-xs font-bold text-slate-700 bg-purple-50 p-3.5 rounded-2xl border border-purple-100 min-w-[200px]">
               <div>Data de Emissão: <strong className="text-slate-900">{currentDateFormatted}</strong></div>
-              <div>Gerado por: <strong className="text-slate-900">{currentUser.username} ({currentUser.role})</strong></div>
+              <div>Gerado por: <strong className="text-slate-900">{currentUser?.username || 'Usuário'} ({currentUser?.role || 'Acesso'})</strong></div>
               <div>Base de Dados: <strong className="text-purple-900">18.000+ Históricos Ativos</strong></div>
             </div>
           </div>

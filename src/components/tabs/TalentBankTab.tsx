@@ -52,12 +52,12 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
   const [endDate, setEndDate] = useState<string>('');
   const [sortBy, setSortBy] = useState<'recente' | 'antigo' | 'nome'>('recente');
 
-  const [favoritedIds, setFavoritedIds] = useState<Set<string>>(new Set());
-  const [selectedTalentIds, setSelectedTalentIds] = useState<Set<string>>(new Set());
+  const [favoritedIds, setFavoritedIds] = useState<Set<number | string>>(new Set());
+  const [selectedTalentIds, setSelectedTalentIds] = useState<Set<number | string>>(new Set());
 
   // Filter only inactive / desligados employees
   const inactiveWorkers = useMemo(() => {
-    return data.filter((w) => !w.isAtivo || w.dataDemissao || w.status === 'desligado');
+    return data.filter((w) => !w.isAtivo || Boolean(w.dataDemissao && w.dataDemissao !== '-'));
   }, [data]);
 
   // Derived filter options
@@ -222,7 +222,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
     setSelectedTalentIds(new Set());
   };
 
-  const toggleFavorite = (id: string, e: React.MouseEvent) => {
+  const toggleFavorite = (id: number | string, e: React.MouseEvent) => {
     e.stopPropagation();
     setFavoritedIds((prev) => {
       const next = new Set(prev);
@@ -573,7 +573,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
                       </button>
 
                       <div className="w-9 h-9 rounded-xl bg-purple-100 text-[#401669] flex items-center justify-center font-bold text-xs border border-purple-200 flex-shrink-0">
-                        {worker.nome.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+                        {(worker.nome || 'P').split(' ').map((n) => n ? n[0] : '').slice(0, 2).join('').toUpperCase() || 'P'}
                       </div>
 
                       <div className="min-w-0">

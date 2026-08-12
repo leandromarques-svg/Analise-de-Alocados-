@@ -32,7 +32,7 @@ export const TeamProductivityCharts: React.FC<TeamProductivityChartsProps> = ({ 
   // Chart 1: Headcount & Clients Data
   const headcountChartData = useMemo(() => {
     return teamStats.map((item) => ({
-      name: item.rep.username,
+      name: item.rep?.username || 'Desconhecido',
       'Alocados Ativos': item.totalActiveWorkers,
       'Clientes Atribuídos': item.assignedClientsCount,
     }));
@@ -41,7 +41,7 @@ export const TeamProductivityCharts: React.FC<TeamProductivityChartsProps> = ({ 
   // Chart 2: Folha de Pagamento Total Gerida
   const folhaChartData = useMemo(() => {
     return teamStats.map((item) => ({
-      name: item.rep.username,
+      name: item.rep?.username || 'Desconhecido',
       'Folha Gerida (R$)': item.totalFolha,
     }));
   }, [teamStats]);
@@ -49,7 +49,7 @@ export const TeamProductivityCharts: React.FC<TeamProductivityChartsProps> = ({ 
   // Chart 3: Ticket Médio por Trabalhador
   const ticketChartData = useMemo(() => {
     return teamStats.map((item) => ({
-      name: item.rep.username,
+      name: item.rep?.username || 'Desconhecido',
       'Ticket Médio (R$)': Math.round(item.avgTicket),
     }));
   }, [teamStats]);
@@ -57,7 +57,7 @@ export const TeamProductivityCharts: React.FC<TeamProductivityChartsProps> = ({ 
   // Chart 4: Inatividade vs Ativas
   const inactivityChartData = useMemo(() => {
     return teamStats.map((item) => ({
-      name: item.rep.username,
+      name: item.rep?.username || 'Desconhecido',
       'Contas Ativas': item.assignedClientsCount - item.inactiveAccounts,
       'Inativas > 1 Ano': item.inactiveAccounts,
     }));
@@ -88,7 +88,7 @@ export const TeamProductivityCharts: React.FC<TeamProductivityChartsProps> = ({ 
             </div>
             <div>
               <span className="text-[10px] uppercase tracking-wider font-bold text-purple-300 block">Líder em Volume de Folha</span>
-              <span className="text-base font-black text-white">{topFolhaRep.rep.username}</span>
+              <span className="text-base font-black text-white">{topFolhaRep.rep?.username || 'Desconhecido'}</span>
               <span className="text-xs font-bold text-emerald-300 block">
                 R$ {topFolhaRep.totalFolha.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
@@ -103,7 +103,7 @@ export const TeamProductivityCharts: React.FC<TeamProductivityChartsProps> = ({ 
             </div>
             <div>
               <span className="text-[10px] uppercase tracking-wider font-bold text-purple-300 block">Maior Volume de Alocados</span>
-              <span className="text-base font-black text-white">{topHeadcountRep.rep.username}</span>
+              <span className="text-base font-black text-white">{topHeadcountRep.rep?.username || 'Desconhecido'}</span>
               <span className="text-xs font-bold text-purple-200 block">
                 {topHeadcountRep.totalActiveWorkers} trabalhadores ativos ({topHeadcountRep.assignedClientsCount} empresas)
               </span>

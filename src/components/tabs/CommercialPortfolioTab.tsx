@@ -34,6 +34,7 @@ import {
   Save,
   Loader2,
   FileText,
+  Lock,
 } from 'lucide-react';
 
 interface CommercialPortfolioTabProps {
@@ -66,17 +67,17 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
 
   // Gestor / Admin rep selection state
   const isGestorOrAdmin =
-    currentUser.role === 'Gerencial Comercial' ||
-    currentUser.role === 'Administrador';
+    currentUser?.role === 'Gerencial Comercial' ||
+    currentUser?.role === 'Administrador';
 
   const [commercialUsers, setCommercialUsers] = useState<User[]>([]);
-  const [selectedRepUsername, setSelectedRepUsername] = useState<string>(currentUser.username);
+  const [selectedRepUsername, setSelectedRepUsername] = useState<string>(currentUser?.username || '');
 
   // Load commercial reps list for Gestor/Admin (Executivos Comerciais only)
   useEffect(() => {
     if (isGestorOrAdmin) {
       getUsers().then((users) => {
-        const reps = users.filter((u) => u.role === 'Comercial');
+        const reps = (users || []).filter((u) => u?.role === 'Comercial');
         setCommercialUsers(reps);
       });
     }
@@ -84,12 +85,14 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
 
   // Target user profile being inspected
   const targetUser = useMemo(() => {
+    if (!currentUser) return {} as User;
     if (selectedRepUsername === currentUser.username) return currentUser;
     return commercialUsers.find((u) => u.username === selectedRepUsername) || currentUser;
   }, [selectedRepUsername, currentUser, commercialUsers]);
 
   // Calculate initial portfolio assigned clients based on selected user profile
   const initialClients = useMemo(() => {
+    if (!targetUser) return [];
     const set = new Set<string>(targetUser.clientesAtribuidos || []);
     const groups = targetUser.gruposEconomicos || (targetUser.grupoEconomico ? [targetUser.grupoEconomico] : []);
     groups.forEach((groupName) => {
@@ -354,7 +357,7 @@ export const CommercialPortfolioTab: React.FC<CommercialPortfolioTabProps> = ({
     return availableClientes.filter((c) => {
       if (c.toLowerCase().includes(q)) return true;
       const matchWorker = data.find((w) => w.nomeCliente.toLowerCase() === c.toLowerCase());
-      return matchWorker && matchWorker.grupoEconomico.toLowerCase().includes(q);
+      return matchWorker && matchWorker.grupoEconomico && matchWorker.grupoEconomico.toLowerCase().includes(q);
     });
   }, [availableClientes, searchTerm, data]);
 

@@ -102,8 +102,8 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
   // Handle reassigning a client to a commercial rep
   const handleAssignRep = async (clientName: string, repUsername: string) => {
     const isCanAssign =
-      currentUser.role === 'Gerencial Comercial' ||
-      currentUser.role === 'Administrador';
+      currentUser?.role === 'Gerencial Comercial' ||
+      currentUser?.role === 'Administrador';
 
     if (!isCanAssign) {
       alert('Apenas o Administrador e o Gestor Comercial podem atribuir clientes e grupos econômicos.');
@@ -642,9 +642,9 @@ export const CommercialManagementTab: React.FC<CommercialManagementTabProps> = (
               {filteredClients.map((client) => {
                 const assignedRep = assignments[client.clientName] || '';
                 const isGestorOrAdmin =
-                  currentUser.role === 'Gerencial Comercial' ||
-                  currentUser.role === 'Administrador';
-                const isAssignedToOther = Boolean(assignedRep && assignedRep !== currentUser.username);
+                  currentUser?.role === 'Gerencial Comercial' ||
+                  currentUser?.role === 'Administrador';
+                const isAssignedToOther = Boolean(assignedRep && assignedRep !== currentUser?.username);
 
                 return (
                   <tr key={client.clientName} className="hover:bg-purple-50/50 transition-colors">
