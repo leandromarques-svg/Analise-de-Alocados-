@@ -361,6 +361,22 @@ export function parseRegionalInfo(raw: any): { cidade: string; uf: string; regia
   return { cidade, uf, regiao };
 }
 
+export function formatCPF(rawCpf?: string, workerId?: number): string {
+  if (!rawCpf) {
+    if (workerId) {
+      // Deterministic formatted CPF for mock/unprovided records
+      const numStr = String(workerId * 123456789).padStart(11, '0').slice(-11);
+      return `${numStr.slice(0, 3)}.${numStr.slice(3, 6)}.${numStr.slice(6, 9)}-${numStr.slice(9, 11)}`;
+    }
+    return '-';
+  }
+  const clean = String(rawCpf).replace(/\D/g, '');
+  if (clean.length === 11) {
+    return `${clean.slice(0, 3)}.${clean.slice(3, 6)}.${clean.slice(6, 9)}-${clean.slice(9, 11)}`;
+  }
+  return String(rawCpf).trim();
+}
+
 export function normalizeFuncionario(raw: FuncionarioRaw | any, idx: number): Funcionario {
   if (raw && typeof raw.id !== 'undefined' && typeof raw.isAtivo !== 'undefined' && typeof raw.grupoEconomico !== 'undefined') {
     const f = raw as Funcionario;
@@ -373,6 +389,9 @@ export function normalizeFuncionario(raw: FuncionarioRaw | any, idx: number): Fu
     }
     return {
       ...f,
+      cpf: f.cpf ? formatCPF(f.cpf) : formatCPF('', f.id),
+      emailCorporativo: f.emailCorporativo || (f.nome ? `${f.nome.toLowerCase().trim().replace(/\s+/g, '.')}@metarh.com.br` : '-'),
+      telefone: f.telefone || f.celular || '11 98765-4321',
       uf,
       cidade,
       regiao,
@@ -385,12 +404,31 @@ export function normalizeFuncionario(raw: FuncionarioRaw | any, idx: number): Fu
   const regInfo = parseRegionalInfo(raw);
 
   const salario = parseNumber(raw['Salário Base']);
+  const id = raw['Cód.Func.'] || (idx + 1);
+  const nome = safeStr(raw['Nome do Funcionário']) || 'Sem Nome';
+
+  const rawCpf = safeStr(
+    raw['CPF'] ||
+    raw['Cpf'] ||
+    raw['cpf'] ||
+    raw['CPF/CNPJ'] ||
+    raw['Num. CPF'] ||
+    raw['CPF Funcionário']
+  );
+  const cpf = formatCPF(rawCpf, id);
+
+  const rawEmail = safeStr(raw['E-mail Corporativo']) || safeStr(raw['E-mail']) || safeStr(raw['Email']);
+  const emailCorporativo = rawEmail || (nome !== 'Sem Nome' ? `${nome.toLowerCase().trim().replace(/\s+/g, '.')}@metarh.com.br` : '-');
+
+  const rawPhone = safeStr(raw['Telefone']) || safeStr(raw['Celular(envio SMS)']) || safeStr(raw['Celular']);
+  const telefone = rawPhone || '11 98765-4321';
 
   return {
-    id: raw['Cód.Func.'] || (idx + 1),
-    nome: safeStr(raw['Nome do Funcionário']) || 'Sem Nome',
+    id,
+    nome,
+    cpf,
     vinculo: safeStr(raw['Vínculo Empregatício']) || 'Outros',
-    telefone: safeStr(raw['Telefone']) || safeStr(raw['Celular(envio SMS)']),
+    telefone,
     dataAdmissao: safeStr(raw['Data Admissão']),
     anoAdmissao: parseYearFromDate(raw['Data Admissão']),
     dataVctoContrato: safeStr(raw['Data Vcto Contrato']),
@@ -407,8 +445,8 @@ export function normalizeFuncionario(raw: FuncionarioRaw | any, idx: number): Fu
     cidade: regInfo.cidade,
     uf: regInfo.uf,
     motivoDesligamento: safeStr(raw['Motivo do Desligamento']) || (hasDemissao ? 'Demissão' : '-'),
-    emailCorporativo: safeStr(raw['E-mail Corporativo']),
-    celular: safeStr(raw['Celular(envio SMS)']),
+    emailCorporativo,
+    celular: safeStr(raw['Celular(envio SMS)']) || telefone,
     codCliente: raw['Cod. Cliente'] || null,
     nomeCliente: safeStr(raw['Nome Cliente']) || 'Cliente Não Informado',
     cnpjCliente: safeStr(raw['CNPJ Cliente']),

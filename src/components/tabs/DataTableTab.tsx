@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Funcionario } from '../../types';
-import { formatCurrency, formatDate, parseDateDetails, isFutureAdmission } from '../../utils/dataParser';
-import { Search, ChevronLeft, ChevronRight, Eye, FileSpreadsheet, ArrowUpDown, Calendar, CalendarDays } from 'lucide-react';
+import { formatCurrency, formatDate, parseDateDetails, isFutureAdmission, formatCPF } from '../../utils/dataParser';
+import { Search, ChevronLeft, ChevronRight, Eye, FileSpreadsheet, ArrowUpDown, Calendar, CalendarDays, Mail, Phone, CreditCard } from 'lucide-react';
 
 interface DataTableTabProps {
   data: Funcionario[];
@@ -42,6 +42,10 @@ export const DataTableTab: React.FC<DataTableTabProps> = ({
     return result.filter(
       (w) =>
         w.nome.toLowerCase().includes(q) ||
+        (w.cpf && w.cpf.toLowerCase().includes(q)) ||
+        (w.emailCorporativo && w.emailCorporativo.toLowerCase().includes(q)) ||
+        (w.telefone && w.telefone.toLowerCase().includes(q)) ||
+        (w.celular && w.celular.toLowerCase().includes(q)) ||
         w.cargo.toLowerCase().includes(q) ||
         w.grupoEconomico.toLowerCase().includes(q) ||
         w.nomeCliente.toLowerCase().includes(q) ||
@@ -139,7 +143,7 @@ export const DataTableTab: React.FC<DataTableTabProps> = ({
             Tabela Geral de Funcionários Alocados ({sortedData.length.toLocaleString('pt-BR')})
           </h2>
           <p className="text-xs text-[#78549e] mt-0.5">
-            Consulte a lista detalhada de colaboradores ativos e desligados. Clique nos cabeçalhos ou use a ordenação por data para organizar da primeira para a última.
+            Consulte a lista detalhada de colaboradores ativos e desligados com nome completo, CPF, e-mail e telefone.
           </p>
         </div>
 
@@ -192,11 +196,11 @@ export const DataTableTab: React.FC<DataTableTabProps> = ({
           </div>
 
           {/* Search Box */}
-          <div className="relative flex-1 sm:w-56">
+          <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9f04d4]" />
             <input
               type="text"
-              placeholder="Buscar por nome, cargo, cidade..."
+              placeholder="Buscar por nome, CPF, e-mail, telefone, cargo..."
               value={tableSearch}
               onChange={(e) => {
                 setTableSearch(e.target.value);
@@ -228,9 +232,33 @@ export const DataTableTab: React.FC<DataTableTabProps> = ({
                 </th>
                 <th className="p-3.5 cursor-pointer hover:bg-[#6404bc]" onClick={() => handleSort('nome')}>
                   <div className="flex items-center gap-1">
-                    Nome do Funcionário
+                    Nome Completo
                     {sortField === 'nome' && <span className="text-[#c9f545] font-black">{sortDirection === 'asc' ? '↑' : '↓'}</span>}
                     {sortField !== 'nome' && <ArrowUpDown className="w-3 h-3" />}
+                  </div>
+                </th>
+                <th className="p-3.5 cursor-pointer hover:bg-[#6404bc]" onClick={() => handleSort('cpf')}>
+                  <div className="flex items-center gap-1">
+                    <CreditCard className="w-3 h-3 text-[#c9f545]" />
+                    <span>CPF</span>
+                    {sortField === 'cpf' && <span className="text-[#c9f545] font-black">{sortDirection === 'asc' ? '↑' : '↓'}</span>}
+                    {sortField !== 'cpf' && <ArrowUpDown className="w-3 h-3" />}
+                  </div>
+                </th>
+                <th className="p-3.5 cursor-pointer hover:bg-[#6404bc]" onClick={() => handleSort('emailCorporativo')}>
+                  <div className="flex items-center gap-1">
+                    <Mail className="w-3 h-3 text-[#c9f545]" />
+                    <span>E-mail</span>
+                    {sortField === 'emailCorporativo' && <span className="text-[#c9f545] font-black">{sortDirection === 'asc' ? '↑' : '↓'}</span>}
+                    {sortField !== 'emailCorporativo' && <ArrowUpDown className="w-3 h-3" />}
+                  </div>
+                </th>
+                <th className="p-3.5 cursor-pointer hover:bg-[#6404bc]" onClick={() => handleSort('telefone')}>
+                  <div className="flex items-center gap-1">
+                    <Phone className="w-3 h-3 text-[#c9f545]" />
+                    <span>Telefone</span>
+                    {sortField === 'telefone' && <span className="text-[#c9f545] font-black">{sortDirection === 'asc' ? '↑' : '↓'}</span>}
+                    {sortField !== 'telefone' && <ArrowUpDown className="w-3 h-3" />}
                   </div>
                 </th>
                 <th className="p-3.5 cursor-pointer hover:bg-[#6404bc]" onClick={() => handleSort('isAtivo')}>
@@ -299,20 +327,29 @@ export const DataTableTab: React.FC<DataTableTabProps> = ({
             <tbody className="divide-y divide-[#f0d4fc] bg-white">
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="p-8 text-center text-[#78549e] font-semibold">
+                  <td colSpan={14} className="p-8 text-center text-[#78549e] font-semibold">
                     Nenhum funcionário encontrado com os parâmetros de pesquisa aplicados.
                   </td>
                 </tr>
               ) : (
                 paginatedData.map((worker) => (
                   <tr key={worker.id} className="hover:bg-[#faf6fd] transition-colors">
-                    <td className="p-3.5 font-bold text-[#9f04d4]">
+                    <td className="p-3.5 font-bold text-[#9f04d4] whitespace-nowrap">
                       #{worker.id}
                     </td>
-                    <td className="p-3.5 font-bold text-[#470082]">
+                    <td className="p-3.5 font-bold text-[#470082] whitespace-nowrap">
                       {worker.nome}
                     </td>
-                    <td className="p-3.5">
+                    <td className="p-3.5 font-mono text-[#330066] font-semibold whitespace-nowrap">
+                      {formatCPF(worker.cpf, worker.id)}
+                    </td>
+                    <td className="p-3.5 text-[#330066] whitespace-nowrap">
+                      {worker.emailCorporativo || '-'}
+                    </td>
+                    <td className="p-3.5 text-[#330066] whitespace-nowrap">
+                      {worker.telefone || worker.celular || '-'}
+                    </td>
+                    <td className="p-3.5 whitespace-nowrap">
                       {worker.isAtivo ? (
                         <span className="bg-[#c9f545] text-[#470082] font-bold text-[10px] px-2.5 py-1 rounded-full border border-[#b5e036]">
                           ATIVO
@@ -323,22 +360,22 @@ export const DataTableTab: React.FC<DataTableTabProps> = ({
                         </span>
                       )}
                     </td>
-                    <td className="p-3.5 text-[#330066] font-medium">
+                    <td className="p-3.5 text-[#330066] font-medium whitespace-nowrap">
                       {worker.cargo}
                     </td>
-                    <td className="p-3.5 text-[#78549e] font-semibold">
+                    <td className="p-3.5 text-[#78549e] font-semibold whitespace-nowrap">
                       {worker.grupoEconomico}
                     </td>
-                    <td className="p-3.5 text-[#330066]">
+                    <td className="p-3.5 text-[#330066] whitespace-nowrap">
                       {worker.nomeCliente}
                     </td>
-                    <td className="p-3.5 text-[#78549e]">
+                    <td className="p-3.5 text-[#78549e] whitespace-nowrap">
                       {worker.regiao}
                     </td>
-                    <td className="p-3.5 text-right font-extrabold text-[#9f04d4]">
+                    <td className="p-3.5 text-right font-extrabold text-[#9f04d4] whitespace-nowrap">
                       {formatCurrency(worker.salario)}
                     </td>
-                    <td className="p-3.5 text-center text-[#470082] font-bold">
+                    <td className="p-3.5 text-center text-[#470082] font-bold whitespace-nowrap">
                       <div className="flex flex-col items-center justify-center">
                         <span>{formatDate(worker.dataAdmissao)}</span>
                         {isFutureAdmission(worker.dataAdmissao) && (
@@ -348,10 +385,10 @@ export const DataTableTab: React.FC<DataTableTabProps> = ({
                         )}
                       </div>
                     </td>
-                    <td className="p-3.5 text-center text-[#ff27f9] font-bold">
+                    <td className="p-3.5 text-center text-[#ff27f9] font-bold whitespace-nowrap">
                       {worker.isAtivo ? '-' : formatDate(worker.dataDemissao)}
                     </td>
-                    <td className="p-3.5 text-center">
+                    <td className="p-3.5 text-center whitespace-nowrap">
                       <button
                         onClick={() => onSelectWorker(worker)}
                         className="p-1.5 text-[#9f04d4] hover:text-white hover:bg-[#9f04d4] rounded-lg transition-all cursor-pointer"

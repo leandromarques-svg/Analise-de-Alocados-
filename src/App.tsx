@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FuncionarioRaw, Funcionario, FilterOptions, DashboardMetrics, User } from './types';
-import { normalizeFuncionario, calculateMetrics, parseDateDetails } from './utils/dataParser';
+import { normalizeFuncionario, calculateMetrics, parseDateDetails, formatCPF } from './utils/dataParser';
 import { saveLocalCache, getLocalCache } from './utils/localCache';
 import { syncCommercialAssignmentsServer, getClientAssignments } from './utils/commercialUtils';
 import { getCurrentUserFromStorage, logoutUser } from './services/userService';
@@ -503,13 +503,16 @@ export default function App() {
     if (filteredData.length === 0) return;
 
     const headers = [
-      'Cód. Func.', 'Nome Funcionário', 'Status', 'Vínculo Empregatício', 'Salário Base (R$)',
+      'Cód. Func.', 'Nome Completo', 'CPF', 'E-mail', 'Telefone', 'Status', 'Vínculo Empregatício', 'Salário Base (R$)',
       'Cargo ou Função', 'Grupo Econômico', 'Cliente', 'Região/Cidade', 'Data Admissão', 'Data Demissão', 'Motivo Desligamento'
     ];
 
     const rows = filteredData.map((d) => [
       d.id,
       `"${d.nome.replace(/"/g, '""')}"`,
+      `"${formatCPF(d.cpf, d.id)}"`,
+      `"${(d.emailCorporativo || '').replace(/"/g, '""')}"`,
+      `"${(d.telefone || d.celular || '').replace(/"/g, '""')}"`,
       d.isAtivo ? 'ATIVO' : 'DESLIGADO',
       `"${d.vinculo.replace(/"/g, '""')}"`,
       d.salario.toFixed(2),

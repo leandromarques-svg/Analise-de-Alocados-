@@ -33,6 +33,9 @@ export interface User {
 export interface FuncionarioRaw {
   'Cód.Func.'?: number;
   'Nome do Funcionário'?: string;
+  'CPF'?: string;
+  'Cpf'?: string;
+  'cpf'?: string;
   'Vínculo Empregatício'?: string;
   'Telefone'?: string;
   'Data Admissão'?: string;
@@ -47,6 +50,8 @@ export interface FuncionarioRaw {
   'e '?: string;
   'Motivo do Desligamento'?: string;
   'E-mail Corporativo'?: string;
+  'E-mail'?: string;
+  'Email'?: string;
   'Celular(envio SMS)'?: string;
   'Cod. Cliente'?: number;
   'Nome Cliente'?: string;
@@ -63,6 +68,7 @@ export interface FuncionarioRaw {
 export interface Funcionario {
   id: number;
   nome: string;
+  cpf: string;
   vinculo: string;
   telefone: string;
   dataAdmissao: string;
