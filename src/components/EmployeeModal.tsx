@@ -1,7 +1,7 @@
 import React from 'react';
 import { Funcionario } from '../types';
-import { formatCurrency, formatDate, formatCPF } from '../utils/dataParser';
-import { X, User, Briefcase, Building2, Calendar, MapPin, Mail, Phone, DollarSign, FileText, CheckCircle2, AlertCircle, CreditCard } from 'lucide-react';
+import { formatCurrency, formatDate } from '../utils/dataParser';
+import { X, User, Briefcase, Building2, Calendar, MapPin, Mail, Phone, DollarSign, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface EmployeeModalProps {
   worker: Funcionario | null;
@@ -96,35 +96,6 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({ worker, onClose })
 
           </div>
 
-          {/* Identificação e Contatos Direct Card */}
-          <div className="bg-[#faf6fd] p-4 rounded-2xl border border-[#f0d4fc] space-y-2">
-            <div className="flex items-center gap-2 text-[#9f04d4] font-bold">
-              <CreditCard className="w-4 h-4" />
-              <span>Identificação do Colaborador</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-              <div>
-                <span className="text-[10px] font-bold text-[#78549e] uppercase">CPF</span>
-                <p className="text-sm font-mono font-extrabold text-[#470082]">{formatCPF(worker.cpf, worker.id)}</p>
-              </div>
-
-              <div>
-                <span className="text-[10px] font-bold text-[#78549e] uppercase">E-mail Corporativo</span>
-                <p className="text-xs font-semibold text-[#330066] truncate" title={worker.emailCorporativo || '-'}>
-                  {worker.emailCorporativo || 'Não informado'}
-                </p>
-              </div>
-
-              <div>
-                <span className="text-[10px] font-bold text-[#78549e] uppercase">Telefone / Celular</span>
-                <p className="text-xs font-semibold text-[#330066]">
-                  {worker.telefone || worker.celular || 'Não informado'}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Grupo Econômico e Cliente */}
           <div className="bg-[#faf6fd] p-4 rounded-2xl border border-[#f0d4fc] space-y-2">
             <div className="flex items-center gap-2 text-[#9f04d4] font-bold">
@@ -164,15 +135,17 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({ worker, onClose })
             <div className="bg-[#faf6fd] p-4 rounded-2xl border border-[#f0d4fc]">
               <div className="flex items-center gap-2 text-[#9f04d4] font-bold mb-2">
                 <Mail className="w-4 h-4" />
-                <span>RH Focal</span>
+                <span>Contatos & RH Focal</span>
               </div>
-              {worker.rhFocal ? (
-                <p className="text-xs text-[#330066] font-bold">
-                  {worker.rhFocal}
-                </p>
-              ) : (
-                <p className="text-xs text-[#78549e]">
-                  Não especificado
+              <p className="text-xs text-[#330066]">
+                E-mail: {worker.emailCorporativo || 'Não informado'}
+              </p>
+              <p className="text-xs text-[#330066] mt-0.5">
+                Telefone: {worker.telefone || worker.celular || 'Não informado'}
+              </p>
+              {worker.rhFocal && (
+                <p className="text-[11px] text-[#9f04d4] font-bold mt-1">
+                  RH Focal: {worker.rhFocal}
                 </p>
               )}
             </div>
