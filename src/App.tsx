@@ -20,6 +20,7 @@ import { ContractExpirationsTab } from './components/tabs/ContractExpirationsTab
 import { TalentBankTab } from './components/tabs/TalentBankTab';
 import { CommercialPortfolioTab } from './components/tabs/CommercialPortfolioTab';
 import { CommercialManagementTab } from './components/tabs/CommercialManagementTab';
+import { CompanyCommercialsTab } from './components/tabs/CompanyCommercialsTab';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Footer } from './components/Footer';
 import { EmployeeModal } from './components/EmployeeModal';
@@ -60,12 +61,13 @@ export default function App() {
     | 'contracts'
     | 'groups'
     | 'talent_bank'
+    | 'rh_empresas_comerciais'
     | 'table'
     | 'comercial_carteira'
     | 'comercial_gestao'
   >(() => {
     const role = currentUser?.role;
-    if (role === 'RH') return 'talent_bank';
+    if (role === 'RH') return 'rh_empresas_comerciais';
     if (role === 'Comercial') return 'comercial_carteira';
     if (role === 'Gerencial Comercial') return 'comercial_gestao';
     return 'overview';
@@ -79,11 +81,11 @@ export default function App() {
   // Safety redirect for restricted roles
   useEffect(() => {
     if (!currentUser) return;
-    if (currentUser.role === 'RH' && activeTab !== 'talent_bank') {
-      setActiveTab('talent_bank');
+    if (currentUser.role === 'RH' && !['talent_bank', 'rh_empresas_comerciais'].includes(activeTab)) {
+      setActiveTab('rh_empresas_comerciais');
     } else if (
       currentUser.role === 'Cliente' &&
-      ['groups', 'talent_bank', 'comercial_carteira', 'comercial_gestao'].includes(activeTab)
+      ['groups', 'talent_bank', 'rh_empresas_comerciais', 'comercial_carteira', 'comercial_gestao'].includes(activeTab)
     ) {
       setActiveTab('overview');
     }
@@ -580,21 +582,42 @@ export default function App() {
 
         {/* Navigation Bar with Collapsible Outros Estudos */}
         {currentUser?.role === 'RH' ? (
-          <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold">
-                <UserCheck className="w-5 h-5" />
+          <div className="space-y-3 mb-6">
+            <div className="p-2 bg-gradient-to-r from-emerald-950 via-[#134e4a] to-[#064e3b] rounded-2xl border border-emerald-800/50 shadow-sm flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2 no-scrollbar">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-200 px-3 py-1.5 bg-white/10 rounded-xl flex-shrink-0 border border-white/10">
+                  Módulos de RH:
+                </span>
+
+                <button
+                  onClick={() => setActiveTab('rh_empresas_comerciais')}
+                  className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                    activeTab === 'rh_empresas_comerciais'
+                      ? 'bg-white text-emerald-950 shadow-md font-black ring-2 ring-emerald-300'
+                      : 'bg-white/10 text-emerald-100 hover:bg-white/20'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4 text-amber-300" />
+                  Comerciais por Empresa
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('talent_bank')}
+                  className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                    activeTab === 'talent_bank'
+                      ? 'bg-white text-emerald-950 shadow-md font-black ring-2 ring-emerald-300'
+                      : 'bg-white/10 text-emerald-100 hover:bg-white/20'
+                  }`}
+                >
+                  <UserCheck className="w-4 h-4 text-emerald-400" />
+                  Banco de Talentos
+                </button>
               </div>
-              <div>
-                <h2 className="text-sm font-bold text-emerald-950">Acesso Restrito: Banco de Talentos RH</h2>
-                <p className="text-xs text-emerald-700">
-                  Pesquise ex-alocados para processos seletivos e novas oportunidades de recrutamento.
-                </p>
+
+              <div className="text-[11px] font-semibold text-emerald-200/80 hidden lg:block pr-2">
+                Consulta de executivos comerciais &amp; recrutamento de talentos
               </div>
             </div>
-            <span className="px-3 py-1 bg-emerald-200 text-emerald-900 text-xs font-bold rounded-xl">
-              Perfil RH
-            </span>
           </div>
         ) : (
           <div className="space-y-3 mb-6">
@@ -708,14 +731,14 @@ export default function App() {
                   onClick={() => setIsOutrosEstudosExpanded(!isOutrosEstudosExpanded)}
                   title={isOutrosEstudosExpanded ? "Recolher Outros Estudos" : "Expandir Outros Estudos"}
                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer border ${
-                    isOutrosEstudosExpanded || ['contracts', 'groups', 'talent_bank', 'table'].includes(activeTab)
+                    isOutrosEstudosExpanded || ['contracts', 'groups', 'rh_empresas_comerciais', 'talent_bank', 'table'].includes(activeTab)
                       ? 'bg-[#401669] text-white border-[#401669] shadow-xs'
                       : 'bg-white text-[#401669] border-slate-300 hover:bg-purple-100'
                   }`}
                 >
                   <ChevronDown
                     className={`w-4 h-4 transition-transform duration-300 ${
-                      isOutrosEstudosExpanded || ['contracts', 'groups', 'talent_bank', 'table'].includes(activeTab)
+                      isOutrosEstudosExpanded || ['contracts', 'groups', 'rh_empresas_comerciais', 'talent_bank', 'table'].includes(activeTab)
                         ? 'rotate-180'
                         : ''
                     }`}
@@ -725,7 +748,7 @@ export default function App() {
             </div>
 
             {/* Expanded Outros Estudos Sub-Bar */}
-            {(isOutrosEstudosExpanded || ['contracts', 'groups', 'talent_bank', 'table'].includes(activeTab)) && (
+            {(isOutrosEstudosExpanded || ['contracts', 'groups', 'rh_empresas_comerciais', 'talent_bank', 'table'].includes(activeTab)) && (
               <div className="flex overflow-x-auto gap-1.5 p-1.5 bg-purple-50/90 rounded-2xl border border-purple-200/80 no-scrollbar items-center animate-fadeIn">
                 <span className="text-[10px] uppercase tracking-wider font-extrabold text-[#401669] px-3 py-1 bg-purple-100/80 rounded-xl flex-shrink-0 flex items-center gap-1">
                   <FolderKanban className="w-3 h-3" /> Outros Estudos:
@@ -755,6 +778,18 @@ export default function App() {
                     >
                       <Building2 className="w-4 h-4" />
                       Grupos Econômicos
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('rh_empresas_comerciais')}
+                      className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
+                        activeTab === 'rh_empresas_comerciais'
+                          ? 'bg-[#401669] text-white shadow-xs'
+                          : 'text-purple-900 hover:bg-purple-100/70'
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4 text-amber-400" />
+                      Comerciais por Empresa
                     </button>
 
                     <button
@@ -875,6 +910,15 @@ export default function App() {
             {activeTab === 'talent_bank' && (
               <TalentBankTab
                 data={roleFilteredData}
+                clientAssignmentsMap={clientAssignmentsMap}
+                onSelectWorker={(w) => setSelectedWorker(w)}
+              />
+            )}
+
+            {activeTab === 'rh_empresas_comerciais' && (
+              <CompanyCommercialsTab
+                data={roleFilteredData}
+                clientAssignmentsMap={clientAssignmentsMap}
                 onSelectWorker={(w) => setSelectedWorker(w)}
               />
             )}
@@ -894,6 +938,15 @@ export default function App() {
       {/* Detail Modal */}
       <EmployeeModal
         worker={selectedWorker}
+        assignedRep={
+          selectedWorker
+            ? (
+                clientAssignmentsMap[selectedWorker.nomeCliente] ||
+                (selectedWorker.grupoEconomico ? clientAssignmentsMap[selectedWorker.grupoEconomico] : '') ||
+                ''
+              ).trim()
+            : ''
+        }
         onClose={() => setSelectedWorker(null)}
       />
 

@@ -3,13 +3,15 @@ import { Funcionario } from '../../types';
 import {
   UserCheck, Search, Filter, Briefcase, Building2, MapPin, Calendar, Star,
   UserX, CheckSquare, Square, Download, Trash2, CheckCircle2, ArrowUpDown,
-  Clock, FileText
+  Clock, FileText, UserSquare2
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/dataParser';
+import { getClientAssignments } from '../../utils/commercialUtils';
 import { MultiSearchableSelect } from '../MultiSearchableSelect';
 
 interface TalentBankTabProps {
   data: Funcionario[];
+  clientAssignmentsMap?: Record<string, string>;
   onSelectWorker: (worker: Funcionario) => void;
 }
 
@@ -37,11 +39,13 @@ function getDemissaoTimestamp(dateStr: string | null): number {
 
 export const TalentBankTab: React.FC<TalentBankTabProps> = ({
   data,
+  clientAssignmentsMap,
   onSelectWorker,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCargos, setSelectedCargos] = useState<string[]>([]);
   const [selectedGrupos, setSelectedGrupos] = useState<string[]>([]);
+  const [selectedComerciais, setSelectedComerciais] = useState<string[]>([]);
   const [selectedCidades, setSelectedCidades] = useState<string[]>([]);
   const [selectedLocalidades, setSelectedLocalidades] = useState<string[]>([]);
   const [selectedMotivos, setSelectedMotivos] = useState<string[]>([]);
@@ -54,6 +58,23 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
 
   const [favoritedIds, setFavoritedIds] = useState<Set<number | string>>(new Set());
   const [selectedTalentIds, setSelectedTalentIds] = useState<Set<number | string>>(new Set());
+
+  // Commercial assignments mapping for quick lookup
+  const effectiveAssignments = useMemo(() => {
+    if (clientAssignmentsMap && Object.keys(clientAssignmentsMap).length > 0) {
+      return clientAssignmentsMap;
+    }
+    return getClientAssignments();
+  }, [clientAssignmentsMap]);
+
+  // Helper to obtain assigned commercial executive for any worker
+  const getWorkerRep = (w: Funcionario): string => {
+    return (
+      effectiveAssignments[w.nomeCliente] ||
+      (w.grupoEconomico ? effectiveAssignments[w.grupoEconomico] : '') ||
+      ''
+    ).trim();
+  };
 
   // Filter only inactive / desligados employees
   const inactiveWorkers = useMemo(() => {
@@ -76,6 +97,36 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
     });
     return Array.from(set).sort();
   }, [inactiveWorkers]);
+
+  const comercialOptions = useMemo(() => {
+    const set = new Set<string>();
+    let hasUnassigned = false;
+
+    inactiveWorkers.forEach((w) => {
+      const rep = getWorkerRep(w);
+      if (rep) {
+        set.add(rep);
+      } else {
+        hasUnassigned = true;
+      }
+    });
+
+    // Also populate known reps from active assignments
+    Object.values(effectiveAssignments).forEach((r) => {
+      const repStr = String(r || '').trim();
+      if (repStr) set.add(repStr);
+    });
+
+    if (hasUnassigned) {
+      set.add('Sem comercial atribuído');
+    }
+
+    return Array.from(set).sort((a, b) => {
+      if (a === 'Sem comercial atribuído') return 1;
+      if (b === 'Sem comercial atribuído') return -1;
+      return a.localeCompare(b, 'pt-BR');
+    });
+  }, [inactiveWorkers, effectiveAssignments]);
 
   const cidadeOptions = useMemo(() => {
     const set = new Set<string>();
@@ -114,20 +165,33 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
     });
     const refNow = maxTs > 0 ? maxTs : Date.now();
 
+    const q = searchTerm.toLowerCase().trim();
+
     return inactiveWorkers
       .filter((w) => {
+        const rep = getWorkerRep(w);
+
         const matchSearch =
-          searchTerm === '' ||
-          w.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          w.cargo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          w.grupoEconomico.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          w.regiao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          w.cidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          w.motivoDesligamento.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          w.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase());
+          q === '' ||
+          w.nome.toLowerCase().includes(q) ||
+          w.cargo.toLowerCase().includes(q) ||
+          w.grupoEconomico.toLowerCase().includes(q) ||
+          w.regiao.toLowerCase().includes(q) ||
+          w.cidade.toLowerCase().includes(q) ||
+          w.motivoDesligamento.toLowerCase().includes(q) ||
+          w.nomeCliente.toLowerCase().includes(q) ||
+          (rep && rep.toLowerCase().includes(q));
 
         const matchCargo = selectedCargos.length === 0 || selectedCargos.includes(w.cargo);
         const matchGrupo = selectedGrupos.length === 0 || selectedGrupos.includes(w.grupoEconomico);
+        
+        const matchComercial =
+          selectedComerciais.length === 0 ||
+          selectedComerciais.some((c) => {
+            if (c === 'Sem comercial atribuído') return !rep;
+            return rep.toLowerCase() === c.toLowerCase();
+          });
+
         const matchCidade = selectedCidades.length === 0 || selectedCidades.includes(w.cidade);
         const matchLocalidade =
           selectedLocalidades.length === 0 ||
@@ -167,6 +231,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
           matchSearch &&
           matchCargo &&
           matchGrupo &&
+          matchComercial &&
           matchCidade &&
           matchLocalidade &&
           matchMotivo &&
@@ -190,6 +255,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
     searchTerm,
     selectedCargos,
     selectedGrupos,
+    selectedComerciais,
     selectedCidades,
     selectedLocalidades,
     selectedMotivos,
@@ -197,6 +263,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
     startDate,
     endDate,
     sortBy,
+    effectiveAssignments,
   ]);
 
   // Selection handlers
@@ -236,6 +303,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
     setSearchTerm('');
     setSelectedCargos([]);
     setSelectedGrupos([]);
+    setSelectedComerciais([]);
     setSelectedCidades([]);
     setSelectedLocalidades([]);
     setSelectedMotivos([]);
@@ -260,6 +328,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
       'Grupo Econômico',
       'Empresa',
       'Cliente',
+      'Comercial Responsável',
       'Região / Localidade',
       'Cidade',
       'UF',
@@ -278,6 +347,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
       `"${(w.grupoEconomico || '').replace(/"/g, '""')}"`,
       `"${(w.empresa || '').replace(/"/g, '""')}"`,
       `"${(w.nomeCliente || '').replace(/"/g, '""')}"`,
+      `"${(getWorkerRep(w) || 'Sem comercial atribuído').replace(/"/g, '""')}"`,
       `"${(w.regiao || '').replace(/"/g, '""')}"`,
       `"${(w.cidade || '').replace(/"/g, '""')}"`,
       `"${(w.uf || '').replace(/"/g, '""')}"`,
@@ -304,6 +374,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
     Boolean(searchTerm) ||
     selectedCargos.length > 0 ||
     selectedGrupos.length > 0 ||
+    selectedComerciais.length > 0 ||
     selectedCidades.length > 0 ||
     selectedLocalidades.length > 0 ||
     selectedMotivos.length > 0 ||
@@ -347,10 +418,10 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Buscar por nome, cargo, grupo, cidade, motivo..."
+              placeholder="Buscar por profissional, cargo, grupo, cliente, comercial responsável, cidade, motivo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#401669] focus:bg-white text-slate-800"
+              className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#401669] focus:bg-white text-slate-800 placeholder:text-slate-400"
             />
           </div>
 
@@ -370,8 +441,8 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
           </div>
         </div>
 
-        {/* Row 2: Multi-Searchable Select Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        {/* Row 2: Multi-Searchable Select Filters (6 columns for full coverage) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <MultiSearchableSelect
             label="Cargo / Função"
             selectedValues={selectedCargos}
@@ -391,6 +462,15 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
           />
 
           <MultiSearchableSelect
+            label="Comercial Responsável"
+            selectedValues={selectedComerciais}
+            onChange={(vals) => setSelectedComerciais(vals)}
+            options={comercialOptions}
+            allLabel="Todos os Comerciais"
+            placeholder="Buscar executivo comercial..."
+          />
+
+          <MultiSearchableSelect
             label="Cidade"
             selectedValues={selectedCidades}
             onChange={(vals) => setSelectedCidades(vals)}
@@ -400,7 +480,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
           />
 
           <MultiSearchableSelect
-            label="Localidade (Região / UF)"
+            label="Localidade (Região/UF)"
             selectedValues={selectedLocalidades}
             onChange={(vals) => setSelectedLocalidades(vals)}
             options={localidadeOptions}
@@ -409,7 +489,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
           />
 
           <MultiSearchableSelect
-            label="Motivo do Desligamento"
+            label="Motivo Desligamento"
             selectedValues={selectedMotivos}
             onChange={(vals) => setSelectedMotivos(vals)}
             options={motivoOptions}
@@ -543,6 +623,7 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
           {filteredTalents.slice(0, 90).map((worker) => {
             const isStarred = favoritedIds.has(String(worker.id));
             const isSelected = selectedTalentIds.has(String(worker.id));
+            const rep = getWorkerRep(worker);
 
             return (
               <div
@@ -626,6 +707,22 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
                       <span className="line-clamp-1">{worker.grupoEconomico || 'Grupo Não Especificado'}</span>
                     </div>
 
+                    {/* Atendimento Comercial Responsável */}
+                    <div className="flex items-center justify-between text-[11px] bg-purple-50/80 text-purple-950 px-2.5 py-1.5 rounded-lg border border-purple-100/90 transition-colors">
+                      <span className="flex items-center gap-1.5 font-medium text-slate-600">
+                        <UserCheck className="w-3.5 h-3.5 text-[#401669] flex-shrink-0" />
+                        <span>Comercial:</span>
+                      </span>
+                      <span
+                        className={`font-bold truncate max-w-[155px] ${
+                          rep ? 'text-[#401669]' : 'text-slate-400 italic font-normal'
+                        }`}
+                        title={rep ? `Executivo Comercial Responsável: ${rep}` : 'Sem executivo comercial atribuído para este cliente'}
+                      >
+                        {rep || 'Sem comercial atribuído'}
+                      </span>
+                    </div>
+
                     {/* Cidade e Localidade/Região Separadas */}
                     <div className="flex flex-col space-y-1 text-[11px] pt-2 border-t border-slate-200/60 text-slate-500">
                       <div className="flex items-center justify-between">
@@ -644,9 +741,11 @@ export const TalentBankTab: React.FC<TalentBankTabProps> = ({
                       </div>
 
                       <div className="text-[10px] text-slate-500 flex items-center justify-between pt-0.5">
-                        <span>Região / Localidade: <strong>{worker.regiao || 'Geral'}</strong></span>
+                        <span>Região: <strong>{worker.regiao || 'Geral'}</strong></span>
                         {worker.nomeCliente && (
-                          <span className="truncate max-w-[140px] text-slate-400">{worker.nomeCliente}</span>
+                          <span className="truncate max-w-[140px] text-slate-400" title={`Cliente: ${worker.nomeCliente}`}>
+                            {worker.nomeCliente}
+                          </span>
                         )}
                       </div>
                     </div>

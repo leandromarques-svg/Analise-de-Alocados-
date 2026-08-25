@@ -5,10 +5,11 @@ import { X, User, Briefcase, Building2, Calendar, MapPin, Mail, Phone, DollarSig
 
 interface EmployeeModalProps {
   worker: Funcionario | null;
+  assignedRep?: string;
   onClose: () => void;
 }
 
-export const EmployeeModal: React.FC<EmployeeModalProps> = ({ worker, onClose }) => {
+export const EmployeeModal: React.FC<EmployeeModalProps> = ({ worker, assignedRep, onClose }) => {
   if (!worker) return null;
 
   return (
@@ -96,25 +97,36 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({ worker, onClose })
 
           </div>
 
-          {/* Grupo Econômico e Cliente */}
-          <div className="bg-[#faf6fd] p-4 rounded-2xl border border-[#f0d4fc] space-y-2">
+          {/* Grupo Econômico, Cliente e Atendimento Comercial */}
+          <div className="bg-[#faf6fd] p-4 rounded-2xl border border-[#f0d4fc] space-y-3">
             <div className="flex items-center gap-2 text-[#9f04d4] font-bold">
               <Building2 className="w-4 h-4" />
-              <span>Alocação Empresarial</span>
+              <span>Alocação Empresarial & Atendimento Comercial</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
               <div>
                 <span className="text-[10px] font-bold text-[#78549e] uppercase">Grupo Econômico</span>
-                <p className="text-sm font-extrabold text-[#470082]">{worker.grupoEconomico}</p>
+                <p className="text-sm font-extrabold text-[#470082]">{worker.grupoEconomico || 'Não informado'}</p>
               </div>
 
               <div>
                 <span className="text-[10px] font-bold text-[#78549e] uppercase">Nome do Cliente</span>
-                <p className="text-sm font-bold text-[#330066]">{worker.nomeCliente}</p>
+                <p className="text-sm font-bold text-[#330066]">{worker.nomeCliente || 'Não informado'}</p>
                 {worker.cnpjCliente && (
                   <p className="text-[10px] text-[#78549e]">CNPJ: {worker.cnpjCliente}</p>
                 )}
+              </div>
+
+              <div>
+                <span className="text-[10px] font-bold text-[#78549e] uppercase">Comercial Responsável</span>
+                <p className="text-sm font-extrabold text-[#401669] flex items-center gap-1">
+                  {assignedRep ? (
+                    <span>{assignedRep}</span>
+                  ) : (
+                    <span className="text-slate-400 font-normal italic text-xs">Sem comercial atribuído</span>
+                  )}
+                </p>
               </div>
             </div>
           </div>
