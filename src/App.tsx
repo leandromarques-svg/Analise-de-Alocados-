@@ -108,20 +108,28 @@ export default function App() {
 
       const userClients = (currentUser.clientesAtribuidos || []).map((c) => c.toLowerCase().trim());
 
-      if (userGroups.length === 0 && userClients.length === 0) return data;
+      const matched = (userGroups.length === 0 && userClients.length === 0)
+        ? data
+        : data.filter((item) => {
+            const itemGroup = item.grupoEconomico.toLowerCase().trim();
+            const itemClient = item.nomeCliente.toLowerCase().trim();
+            const itemCnpj = item.cnpjCliente?.toLowerCase().trim() || '';
 
-      return data.filter((item) => {
-        const itemGroup = item.grupoEconomico.toLowerCase().trim();
-        const itemClient = item.nomeCliente.toLowerCase().trim();
-        const itemCnpj = item.cnpjCliente?.toLowerCase().trim() || '';
+            const matchesGroup = userGroups.some((g) => itemGroup.includes(g) || g.includes(itemGroup));
+            const matchesClient = userClients.some(
+              (c) => itemClient.includes(c) || c.includes(itemClient) || (itemCnpj && itemCnpj.includes(c))
+            );
 
-        const matchesGroup = userGroups.some((g) => itemGroup.includes(g) || g.includes(itemGroup));
-        const matchesClient = userClients.some(
-          (c) => itemClient.includes(c) || c.includes(itemClient) || (itemCnpj && itemCnpj.includes(c))
-        );
+            return matchesGroup || matchesClient;
+          });
 
-        return matchesGroup || matchesClient;
-      });
+      // LGPD: Mask sensitive personal contact information for client-role users
+      return matched.map((item) => ({
+        ...item,
+        telefone: item.telefone ? 'Restrito (LGPD)' : '',
+        celular: item.celular ? 'Restrito (LGPD)' : '',
+        emailCorporativo: item.emailCorporativo ? 'Restrito (LGPD)' : '',
+      }));
     }
     return data;
   }, [data, currentUser]);
@@ -928,6 +936,7 @@ export default function App() {
                 data={filteredData}
                 onSelectWorker={(w) => setSelectedWorker(w)}
                 onExportCSV={exportCSV}
+                isClientRole={currentUser?.role === 'Cliente'}
               />
             )}
           </ErrorBoundary>
@@ -938,6 +947,7 @@ export default function App() {
       {/* Detail Modal */}
       <EmployeeModal
         worker={selectedWorker}
+        isClientRole={currentUser?.role === 'Cliente'}
         assignedRep={
           selectedWorker
             ? (

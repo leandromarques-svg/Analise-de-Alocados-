@@ -1,16 +1,19 @@
 import React from 'react';
 import { Funcionario } from '../types';
 import { formatCurrency, formatDate } from '../utils/dataParser';
-import { X, User, Briefcase, Building2, Calendar, MapPin, Mail, Phone, DollarSign, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, User, Briefcase, Building2, Calendar, MapPin, Mail, Phone, DollarSign, FileText, CheckCircle2, AlertCircle, ShieldCheck, Lock } from 'lucide-react';
 
 interface EmployeeModalProps {
   worker: Funcionario | null;
   assignedRep?: string;
+  isClientRole?: boolean;
   onClose: () => void;
 }
 
-export const EmployeeModal: React.FC<EmployeeModalProps> = ({ worker, assignedRep, onClose }) => {
+export const EmployeeModal: React.FC<EmployeeModalProps> = ({ worker, assignedRep, isClientRole = false, onClose }) => {
   if (!worker) return null;
+
+  const isLgpdProtected = isClientRole || Boolean(worker.emailCorporativo?.includes('LGPD') || worker.telefone?.includes('LGPD') || worker.celular?.includes('LGPD'));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#250244]/60 backdrop-blur-xs animate-fadeIn">
@@ -144,23 +147,68 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({ worker, assignedRe
               <p className="text-[11px] text-[#78549e]">Depto/Centro de Custo: {worker.depto}</p>
             </div>
 
-            <div className="bg-[#faf6fd] p-4 rounded-2xl border border-[#f0d4fc]">
-              <div className="flex items-center gap-2 text-[#9f04d4] font-bold mb-2">
-                <Mail className="w-4 h-4" />
-                <span>Contatos & RH Focal</span>
-              </div>
-              <p className="text-xs text-[#330066]">
-                E-mail: {worker.emailCorporativo || 'Não informado'}
-              </p>
-              <p className="text-xs text-[#330066] mt-0.5">
-                Telefone: {worker.telefone || worker.celular || 'Não informado'}
-              </p>
-              {worker.rhFocal && (
-                <p className="text-[11px] text-[#9f04d4] font-bold mt-1">
-                  RH Focal: {worker.rhFocal}
+            {isLgpdProtected ? (
+              <div className="bg-amber-50/80 p-4 rounded-2xl border border-amber-200/90 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-amber-900 font-extrabold text-xs">
+                    <ShieldCheck className="w-4 h-4 text-amber-600" />
+                    <span>Contatos Protegidos (LGPD)</span>
+                  </div>
+                  <span className="bg-amber-200/80 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Lock className="w-2.5 h-2.5" />
+                    Acesso Restrito
+                  </span>
+                </div>
+
+                <div className="bg-white/90 rounded-xl p-2.5 border border-amber-200/70 space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-semibold flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-slate-400" /> E-mail Direto:
+                    </span>
+                    <span className="font-mono text-[10px] text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded font-bold border border-amber-200">
+                      Restrito por LGPD 🔒
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-semibold flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-slate-400" /> Telefone / Celular:
+                    </span>
+                    <span className="font-mono text-[10px] text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded font-bold border border-amber-200">
+                      Restrito por LGPD 🔒
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-amber-900/90 leading-tight">
+                  Em conformidade com a <strong>Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018)</strong>, os dados de contato pessoal direto de colaboradores terceiros são restritos para usuários do perfil cliente.
                 </p>
-              )}
-            </div>
+
+                <div className="pt-2 border-t border-amber-200/80 flex items-center justify-between text-xs">
+                  <span className="text-[10px] text-amber-950 font-bold">Canal Oficial (RH Focal):</span>
+                  <span className="font-extrabold text-[#470082]">
+                    {worker.rhFocal || 'Equipe de Atendimento METARH'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[#faf6fd] p-4 rounded-2xl border border-[#f0d4fc]">
+                <div className="flex items-center gap-2 text-[#9f04d4] font-bold mb-2">
+                  <Mail className="w-4 h-4" />
+                  <span>Contatos & RH Focal</span>
+                </div>
+                <p className="text-xs text-[#330066]">
+                  E-mail: {worker.emailCorporativo || 'Não informado'}
+                </p>
+                <p className="text-xs text-[#330066] mt-0.5">
+                  Telefone: {worker.telefone || worker.celular || 'Não informado'}
+                </p>
+                {worker.rhFocal && (
+                  <p className="text-[11px] text-[#9f04d4] font-bold mt-1">
+                    RH Focal: {worker.rhFocal}
+                  </p>
+                )}
+              </div>
+            )}
 
           </div>
 

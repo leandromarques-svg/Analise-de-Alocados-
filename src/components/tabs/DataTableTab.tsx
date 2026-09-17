@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Funcionario } from '../../types';
 import { formatCurrency, formatDate, parseDateDetails, isFutureAdmission } from '../../utils/dataParser';
-import { Search, ChevronLeft, ChevronRight, Eye, FileSpreadsheet, ArrowUpDown, Calendar, CalendarDays } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Eye, FileSpreadsheet, ArrowUpDown, Calendar, CalendarDays, ShieldCheck, Lock } from 'lucide-react';
 
 interface DataTableTabProps {
   data: Funcionario[];
   onSelectWorker: (worker: Funcionario) => void;
   onExportCSV: () => void;
+  isClientRole?: boolean;
 }
 
 function parseDateToTimestamp(dateStr: string | null | undefined): number {
@@ -19,6 +20,7 @@ export const DataTableTab: React.FC<DataTableTabProps> = ({
   data,
   onSelectWorker,
   onExportCSV,
+  isClientRole = false,
 }) => {
   const [tableSearch, setTableSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -132,6 +134,26 @@ export const DataTableTab: React.FC<DataTableTabProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn">
       
+      {/* LGPD Compliance Notice for Client Role */}
+      {isClientRole && (
+        <div className="bg-blue-50/80 border border-blue-200/90 px-4 py-3 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-blue-950 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <div>
+              <p className="font-bold text-blue-950">
+                Conformidade LGPD Ativa (Lei nº 13.709/2018)
+              </p>
+              <p className="text-[11px] text-blue-800/90">
+                Informações de contato pessoal direto (telefone, celular e e-mail) dos colaboradores alocados são restritas ao perfil de cliente. Para alinhamentos ou contato corporativo, acione seu RH Focal ou Comercial METARH.
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-1 bg-blue-100 text-blue-800 rounded-full border border-blue-200 flex-shrink-0">
+            <Lock className="w-3 h-3 text-blue-700" /> Acesso Protegido
+          </span>
+        </div>
+      )}
+
       {/* Table Controls Header */}
       <div className="bg-white p-6 rounded-2xl shadow-md border border-[#e8d8f5] flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>

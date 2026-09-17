@@ -95,6 +95,13 @@ export const Header: React.FC<HeaderProps> = ({
                         : `Grupo: ${currentUser.grupoEconomico}`}
                     </p>
                   )}
+                  {currentUser.role === 'Cliente' && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[8.5px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200" title="Contatos diretos de colaboradores protegidos conforme LGPD (Lei nº 13.709/2018)">
+                        <Shield className="w-2.5 h-2.5 text-blue-700" /> LGPD Ativa
+                      </span>
+                    </div>
+                  )}
                   {currentUser.role === 'Comercial' && currentUser.clientesAtribuidos?.length && (
                     <p className="text-[10px] text-[#78549e] truncate max-w-[140px]">
                       Carteira: {currentUser.clientesAtribuidos.length} clientes
