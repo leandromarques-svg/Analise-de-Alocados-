@@ -5,7 +5,7 @@ import {
   Download, ArrowUpDown, CheckCircle2, AlertCircle, Eye, X, Copy, Check,
   ExternalLink, Layers, UserSquare2, Filter, ChevronRight, Sparkles
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '../../utils/dataParser';
+import { formatCurrency, formatDate, parseDateDetails } from '../../utils/dataParser';
 import { getClientAssignments } from '../../utils/commercialUtils';
 import { getUsers } from '../../services/userService';
 import { MultiSearchableSelect } from '../MultiSearchableSelect';
@@ -178,13 +178,11 @@ export const CompanyCommercialsTab: React.FC<CompanyCommercialsTabProps> = ({
         }
 
         if (w.dataAdmissao) {
-          const parts = w.dataAdmissao.split('/');
-          if (parts.length === 3) {
-            const ts = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
-            if (ts > lastAdmTimestamp) {
-              lastAdmTimestamp = ts;
-              lastAdm = w.dataAdmissao;
-            }
+          const details = parseDateDetails(w.dataAdmissao);
+          const ts = details.date ? details.date.getTime() : 0;
+          if (ts > lastAdmTimestamp) {
+            lastAdmTimestamp = ts;
+            lastAdm = formatDate(w.dataAdmissao);
           }
         }
       });

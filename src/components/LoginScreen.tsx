@@ -25,6 +25,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setErrorMsg('');
 
     try {
+      try {
+        const sqlRes = await fetch('/api/sql/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username.trim(), password }),
+        });
+        if (sqlRes.ok) {
+          const json = await sqlRes.json();
+          if (json?.success && json.data?.username) {
+            setCurrentUser(json.data);
+            onLoginSuccess(json.data);
+            return;
+          }
+        }
+      } catch (sqlErr) {
+        console.warn('SQL login unavailable:', sqlErr);
+      }
+
       const users = await getUsers();
       const found = users.find(
         (u) =>

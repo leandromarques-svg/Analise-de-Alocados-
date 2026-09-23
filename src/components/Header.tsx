@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, Users, FileSpreadsheet, Building2, CheckCircle2, UserX, UserCog, LogOut, Shield, User as UserIcon } from 'lucide-react';
+import { RefreshCw, Users, FileSpreadsheet, Building2, CheckCircle2, UserX, UserCog, LogOut, Shield, User as UserIcon, Info } from 'lucide-react';
 import { DashboardMetrics, User } from '../types';
 
 interface HeaderProps {
@@ -137,16 +137,49 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </div>
 
-            {/* Refresh Button */}
-            <button
-              onClick={onRefresh}
-              disabled={isLoading || isBackgroundUpdating}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 border border-slate-200 active:scale-95 disabled:opacity-50 cursor-pointer"
-              title="Atualizar dados diretamente da planilha"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${(isLoading || isBackgroundUpdating) ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Atualizar</span>
-            </button>
+            <div className="relative group/bi">
+              <button
+                onClick={onRefresh}
+                disabled={isLoading || isBackgroundUpdating}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 border border-slate-200 active:scale-95 disabled:opacity-50 cursor-pointer"
+                title="Buscar a leitura mais recente"
+                aria-describedby="bi-atualizacao-tip"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${(isLoading || isBackgroundUpdating) ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Atualizar</span>
+                <Info className="w-3.5 h-3.5 text-[#78549e]" aria-hidden="true" />
+              </button>
+              <div
+                id="bi-atualizacao-tip"
+                role="tooltip"
+                className="pointer-events-none invisible absolute right-0 top-full z-50 w-[min(22rem,calc(100vw-2rem))] pt-2 opacity-0 transition duration-150 group-hover/bi:pointer-events-auto group-hover/bi:visible group-hover/bi:opacity-100 group-focus-within/bi:pointer-events-auto group-focus-within/bi:visible group-focus-within/bi:opacity-100"
+              >
+                <div className="rounded-2xl border border-[#e8d8f5] bg-white p-4 text-left shadow-xl shadow-[#401669]/10">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#9c3aff]">
+                    Inteligência de dados
+                  </p>
+                  <p className="mt-1.5 text-sm font-bold leading-snug text-[#401669]">
+                    A base dos nossos clientes, pronta para o comercial decidir.
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                    O BI coleta, organiza e entrega esses dados com agilidade. A leitura sai direto da tabela de funcionários do GI Info, sem planilha no caminho.
+                  </p>
+                  <p className="mt-3 text-xs font-semibold text-slate-700">
+                    Atualização dinâmica, 6 vezes ao dia, a cada 2 horas, no minuto 10.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {['08:10', '10:10', '12:10', '14:10', '16:10', '18:10'].map((slot) => (
+                      <span
+                        key={slot}
+                        className="rounded-lg bg-[#faf6fd] px-2 py-1 text-[11px] font-bold text-[#401669]"
+                      >
+                        {slot}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Export CSV Button */}
             <button

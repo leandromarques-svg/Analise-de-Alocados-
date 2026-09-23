@@ -1,0 +1,97 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+  schemas  = ["alocados"]
+}
+
+model User {
+  id                   String    @id @db.NVarChar(64)
+  username             String    @unique @db.NVarChar(120)
+  password             String?   @db.NVarChar(255)
+  role                 String    @db.NVarChar(64)
+  grupoEconomico       String?   @map("grupo_economico") @db.NVarChar(255)
+  gruposEconomicosJson String?   @map("grupos_economicos_json") @db.NVarChar(Max)
+  clientesAtribuidosJson String? @map("clientes_atribuidos_json") @db.NVarChar(Max)
+  cnpjsAtribuidosJson  String?   @map("cnpjs_atribuidos_json") @db.NVarChar(Max)
+  email                String?   @db.NVarChar(255)
+  phone                String?   @db.NVarChar(64)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.DateTime2
+  updatedAt            DateTime? @map("updated_at") @db.DateTime2
+  logs                 UserLog[]
+
+  @@map("users")
+  @@schema("alocados")
+}
+
+model UserLog {
+  id        String   @id @db.NVarChar(64)
+  userId    String   @map("user_id") @db.NVarChar(64)
+  timestamp DateTime @default(now()) @db.DateTime2
+  author    String   @db.NVarChar(120)
+  action    String   @db.NVarChar(120)
+  details   String?  @db.NVarChar(Max)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId])
+  @@map("user_logs")
+  @@schema("alocados")
+}
+
+model CommercialAssignment {
+  id              String    @id @default(dbgenerated("CONVERT(NVARCHAR(64), NEWID())")) @db.NVarChar(64)
+  grupoEconomico  String?   @map("grupo_economico") @db.NVarChar(255)
+  nomeCliente     String?   @map("nome_cliente") @db.NVarChar(255)
+  comercial       String    @db.NVarChar(120)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime2
+  updatedAt       DateTime? @map("updated_at") @db.DateTime2
+
+  @@index([comercial])
+  @@map("commercial_assignments")
+  @@schema("alocados")
+}
+
+/// Same columns in both environments. Dev keeps a table because dbo.TB_* is absent.
+/// Production migration drops the table and creates a view with this name.
+model Employee {
+  id                  Int       @id
+  nome                String    @db.NVarChar(255)
+  vinculo             String?   @db.NVarChar(120)
+  telefone            String?   @db.NVarChar(64)
+  dataAdmissao        DateTime? @map("data_admissao") @db.DateTime2
+  anoAdmissao         Int?      @map("ano_admissao")
+  dataVctoContrato    DateTime? @map("data_vcto_contrato") @db.DateTime2
+  dataVctoProrrogacao DateTime? @map("data_vcto_prorrogacao") @db.DateTime2
+  anoProrrogacao      Int?      @map("ano_prorrogacao")
+  dataDemissao        DateTime? @map("data_demissao") @db.DateTime2
+  anoDemissao         Int?      @map("ano_demissao")
+  isAtivo             Boolean   @default(true) @map("is_ativo")
+  salario             Decimal?  @db.Decimal(18, 2)
+  cargo               String?   @db.NVarChar(255)
+  depto               String?   @db.NVarChar(255)
+  empresa             Int?
+  regiao              String?   @db.NVarChar(120)
+  cidade              String?   @db.NVarChar(120)
+  uf                  String?   @db.NVarChar(8)
+  motivoDesligamento  String?   @map("motivo_desligamento") @db.NVarChar(255)
+  emailCorporativo    String?   @map("email_corporativo") @db.NVarChar(255)
+  celular             String?   @db.NVarChar(64)
+  codCliente          Int?      @map("cod_cliente")
+  nomeCliente         String?   @map("nome_cliente") @db.NVarChar(255)
+  cnpjCliente         String?   @map("cnpj_cliente") @db.NVarChar(32)
+  departamento        String?   @db.NVarChar(255)
+  rhFocal             String?   @map("rh_focal") @db.NVarChar(255)
+  grupoEconomico      String?   @map("grupo_economico") @db.NVarChar(255)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.DateTime2
+  updatedAt           DateTime? @map("updated_at") @db.DateTime2
+
+  @@index([grupoEconomico])
+  @@index([cnpjCliente])
+  @@index([isAtivo])
+  @@map("employees")
+  @@schema("alocados")
+}

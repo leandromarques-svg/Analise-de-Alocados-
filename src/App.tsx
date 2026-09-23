@@ -1,93 +1,130 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { FuncionarioRaw, Funcionario, FilterOptions, DashboardMetrics, User } from './types';
-import { normalizeFuncionario, calculateMetrics, parseDateDetails } from './utils/dataParser';
-import { saveLocalCache, getLocalCache } from './utils/localCache';
-import { syncCommercialAssignmentsServer, getClientAssignments } from './utils/commercialUtils';
-import { getCurrentUserFromStorage, logoutUser } from './services/userService';
-import { fallbackData } from './data/mockData';
-import { Header } from './components/Header';
-import { FilterBar } from './components/FilterBar';
-import { KPICards } from './components/KPICards';
-import { LoginScreen } from './components/LoginScreen';
-import { UserManagementModal } from './components/UserManagementModal';
-import { OverviewTab } from './components/tabs/OverviewTab';
-import { TemporalTab } from './components/tabs/TemporalTab';
-import { VacanciesAndSalariesTab } from './components/tabs/VacanciesAndSalariesTab';
-import { EconomicGroupsTab } from './components/tabs/EconomicGroupsTab';
-import { RegionalTab } from './components/tabs/RegionalTab';
-import { DataTableTab } from './components/tabs/DataTableTab';
-import { ContractExpirationsTab } from './components/tabs/ContractExpirationsTab';
-import { TalentBankTab } from './components/tabs/TalentBankTab';
-import { CommercialPortfolioTab } from './components/tabs/CommercialPortfolioTab';
-import { CommercialManagementTab } from './components/tabs/CommercialManagementTab';
-import { CompanyCommercialsTab } from './components/tabs/CompanyCommercialsTab';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { Footer } from './components/Footer';
-import { EmployeeModal } from './components/EmployeeModal';
-import { YearComparisonModal } from './components/YearComparisonModal';
-import { LayoutDashboard, Calendar, Briefcase, Building2, MapPin, Table, AlertTriangle, UserCheck, FolderKanban, ChevronDown, BarChart3, Users, PieChart } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from "react";
+import { Funcionario, FilterOptions, DashboardMetrics, User } from "./types";
+import {
+  normalizeFuncionario,
+  calculateMetrics,
+  parseDateDetails,
+} from "./utils/dataParser";
+import {
+  syncCommercialAssignmentsServer,
+  getClientAssignments,
+} from "./utils/commercialUtils";
+import { getCurrentUserFromStorage, logoutUser } from "./services/userService";
+import { Header } from "./components/Header";
+import { FilterBar } from "./components/FilterBar";
+import { KPICards } from "./components/KPICards";
+import { LoginScreen } from "./components/LoginScreen";
+import { UserManagementModal } from "./components/UserManagementModal";
+import { OverviewTab } from "./components/tabs/OverviewTab";
+import { TemporalTab } from "./components/tabs/TemporalTab";
+import { VacanciesAndSalariesTab } from "./components/tabs/VacanciesAndSalariesTab";
+import { EconomicGroupsTab } from "./components/tabs/EconomicGroupsTab";
+import { RegionalTab } from "./components/tabs/RegionalTab";
+import { DataTableTab } from "./components/tabs/DataTableTab";
+import { ContractExpirationsTab } from "./components/tabs/ContractExpirationsTab";
+import { TalentBankTab } from "./components/tabs/TalentBankTab";
+import { CommercialPortfolioTab } from "./components/tabs/CommercialPortfolioTab";
+import { CommercialManagementTab } from "./components/tabs/CommercialManagementTab";
+import { CompanyCommercialsTab } from "./components/tabs/CompanyCommercialsTab";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Footer } from "./components/Footer";
+import { EmployeeModal } from "./components/EmployeeModal";
+import { YearComparisonModal } from "./components/YearComparisonModal";
+import {
+  LayoutDashboard,
+  Calendar,
+  Briefcase,
+  Building2,
+  MapPin,
+  Table,
+  AlertTriangle,
+  UserCheck,
+  FolderKanban,
+  ChevronDown,
+  BarChart3,
+  Users,
+  PieChart,
+} from "lucide-react";
 
 const initialFilters: FilterOptions = {
-  status: 'all',
-  grupoEconomico: '',
-  vinculo: '',
-  ano: '',
-  mes: '',
-  regiao: '',
-  uf: '',
-  cliente: '',
-  cnpj: '',
-  comercial: '',
-  cargo: '',
-  searchQuery: '',
-  minSalario: '',
-  maxSalario: '',
+  status: "all",
+  grupoEconomico: "",
+  vinculo: "",
+  ano: "",
+  mes: "",
+  regiao: "",
+  uf: "",
+  cliente: "",
+  cnpj: "",
+  comercial: "",
+  cargo: "",
+  searchQuery: "",
+  minSalario: "",
+  maxSalario: "",
 };
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(() => getCurrentUserFromStorage());
+  const [currentUser, setCurrentUser] = useState<User | null>(() =>
+    getCurrentUserFromStorage(),
+  );
   const [isUsersModalOpen, setIsUsersModalOpen] = useState<boolean>(false);
 
   const [data, setData] = useState<Funcionario[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isBackgroundUpdating, setIsBackgroundUpdating] = useState<boolean>(false);
-  const [dataSource, setDataSource] = useState<'live' | 'cache' | 'stale_cache' | 'fallback'>('live');
+  const [isBackgroundUpdating, setIsBackgroundUpdating] =
+    useState<boolean>(false);
+  const [dataSource, setDataSource] = useState<
+    "live" | "cache" | "stale_cache" | "fallback"
+  >("live");
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
-    | 'overview'
-    | 'temporal'
-    | 'salaries'
-    | 'regional'
-    | 'contracts'
-    | 'groups'
-    | 'talent_bank'
-    | 'rh_empresas_comerciais'
-    | 'table'
-    | 'comercial_carteira'
-    | 'comercial_gestao'
+    | "overview"
+    | "temporal"
+    | "salaries"
+    | "regional"
+    | "contracts"
+    | "groups"
+    | "talent_bank"
+    | "rh_empresas_comerciais"
+    | "table"
+    | "comercial_carteira"
+    | "comercial_gestao"
   >(() => {
     const role = currentUser?.role;
-    if (role === 'RH') return 'rh_empresas_comerciais';
-    if (role === 'Comercial') return 'comercial_carteira';
-    if (role === 'Gerencial Comercial') return 'comercial_gestao';
-    return 'overview';
+    if (role === "RH") return "rh_empresas_comerciais";
+    if (role === "Comercial") return "comercial_carteira";
+    if (role === "Gerencial Comercial") return "comercial_gestao";
+    return "overview";
   });
 
-  const [isOutrosEstudosExpanded, setIsOutrosEstudosExpanded] = useState<boolean>(false);
+  const [isOutrosEstudosExpanded, setIsOutrosEstudosExpanded] =
+    useState<boolean>(false);
   const [filters, setFilters] = useState<FilterOptions>(initialFilters);
-  const [selectedWorker, setSelectedWorker] = useState<Funcionario | null>(null);
-  const [isYearComparisonOpen, setIsYearComparisonOpen] = useState<boolean>(false);
+  const [selectedWorker, setSelectedWorker] = useState<Funcionario | null>(
+    null,
+  );
+  const [isYearComparisonOpen, setIsYearComparisonOpen] =
+    useState<boolean>(false);
 
   // Safety redirect for restricted roles
   useEffect(() => {
     if (!currentUser) return;
-    if (currentUser.role === 'RH' && !['talent_bank', 'rh_empresas_comerciais'].includes(activeTab)) {
-      setActiveTab('rh_empresas_comerciais');
-    } else if (
-      currentUser.role === 'Cliente' &&
-      ['groups', 'talent_bank', 'rh_empresas_comerciais', 'comercial_carteira', 'comercial_gestao'].includes(activeTab)
+    if (
+      currentUser.role === "RH" &&
+      !["talent_bank", "rh_empresas_comerciais"].includes(activeTab)
     ) {
-      setActiveTab('overview');
+      setActiveTab("rh_empresas_comerciais");
+    } else if (
+      currentUser.role === "Cliente" &&
+      [
+        "groups",
+        "talent_bank",
+        "rh_empresas_comerciais",
+        "comercial_carteira",
+        "comercial_gestao",
+      ].includes(activeTab)
+    ) {
+      setActiveTab("overview");
     }
   }, [currentUser, activeTab]);
 
@@ -98,227 +135,96 @@ export default function App() {
 
   // Restrict base dataset for 'Cliente' role to their assigned grupoEconomicos & clientes
   const roleFilteredData = useMemo(() => {
-    if (currentUser?.role === 'Cliente') {
+    if (currentUser?.role === "Cliente") {
       const userGroups =
         currentUser.gruposEconomicos && currentUser.gruposEconomicos.length > 0
           ? currentUser.gruposEconomicos.map((g) => g.toLowerCase().trim())
           : currentUser.grupoEconomico
-          ? [currentUser.grupoEconomico.toLowerCase().trim()]
-          : [];
+            ? [currentUser.grupoEconomico.toLowerCase().trim()]
+            : [];
 
-      const userClients = (currentUser.clientesAtribuidos || []).map((c) => c.toLowerCase().trim());
+      const userClients = (currentUser.clientesAtribuidos || []).map((c) =>
+        c.toLowerCase().trim(),
+      );
 
-      const matched = (userGroups.length === 0 && userClients.length === 0)
-        ? data
-        : data.filter((item) => {
-            const itemGroup = item.grupoEconomico.toLowerCase().trim();
-            const itemClient = item.nomeCliente.toLowerCase().trim();
-            const itemCnpj = item.cnpjCliente?.toLowerCase().trim() || '';
+      const matched =
+        userGroups.length === 0 && userClients.length === 0
+          ? data
+          : data.filter((item) => {
+              const itemGroup = item.grupoEconomico.toLowerCase().trim();
+              const itemClient = item.nomeCliente.toLowerCase().trim();
+              const itemCnpj = item.cnpjCliente?.toLowerCase().trim() || "";
 
-            const matchesGroup = userGroups.some((g) => itemGroup.includes(g) || g.includes(itemGroup));
-            const matchesClient = userClients.some(
-              (c) => itemClient.includes(c) || c.includes(itemClient) || (itemCnpj && itemCnpj.includes(c))
-            );
+              const matchesGroup = userGroups.some(
+                (g) => itemGroup.includes(g) || g.includes(itemGroup),
+              );
+              const matchesClient = userClients.some(
+                (c) =>
+                  itemClient.includes(c) ||
+                  c.includes(itemClient) ||
+                  (itemCnpj && itemCnpj.includes(c)),
+              );
 
-            return matchesGroup || matchesClient;
-          });
+              return matchesGroup || matchesClient;
+            });
 
       // LGPD: Mask sensitive personal contact information for client-role users
       return matched.map((item) => ({
         ...item,
-        telefone: item.telefone ? 'Restrito (LGPD)' : '',
-        celular: item.celular ? 'Restrito (LGPD)' : '',
-        emailCorporativo: item.emailCorporativo ? 'Restrito (LGPD)' : '',
+        telefone: item.telefone ? "Restrito (LGPD)" : "",
+        celular: item.celular ? "Restrito (LGPD)" : "",
+        emailCorporativo: item.emailCorporativo ? "Restrito (LGPD)" : "",
       }));
     }
     return data;
   }, [data, currentUser]);
 
-  // Fetch function with fast failover, background revalidation & persistent cache saving
-  const fetchData = async (forceRefresh = false, isBackground = false) => {
+  const fetchData = async (_forceRefresh = false, isBackground = false) => {
     if (isBackground) {
       setIsBackgroundUpdating(true);
     } else {
       setIsLoading(true);
     }
 
-    const DIRECT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxovla2YdYk7bIHs4_Z9L8G2N63OtDYrzCQhjAbNvC-Ia3TsLcnWp58bX4GU9RU220R/exec';
-    let rawData: any[] | null = null;
-    let fetchedAt = new Date().toISOString();
-    let source: 'live' | 'cache' | 'stale_cache' | 'fallback' = 'live';
-
-    // 1. Try local server or Vercel serverless API endpoint (/api/alocados) with 12s fast timeout
     try {
-      const url = forceRefresh ? '/api/alocados?refresh=true' : '/api/alocados';
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const json = await res.json();
-          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            rawData = json.data;
-            fetchedAt = json.fetchedAt || json.cachedAt || fetchedAt;
-            source = (json.source as any) || 'live';
-          }
-        }
+      const res = await fetch(
+        _forceRefresh ? "/api/alocados?refresh=1" : "/api/alocados",
+      );
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
       }
-    } catch (e) {
-      console.warn('Endpoint /api/alocados demorou ou falhou:', e);
-    }
-
-    // 2. Fallback: fetch directly from public static asset /metarh_cache_18k.json (serves as base cache)
-    if (!rawData || rawData.length === 0) {
-      try {
-        console.log('Carregando base do cache estático inicial /metarh_cache_18k.json...');
-        const res = await fetch('/metarh_cache_18k.json');
-        if (res.ok) {
-          const json = await res.json();
-          const items = Array.isArray(json) ? json : (json.data || []);
-          if (Array.isArray(items) && items.length > 0) {
-            rawData = items;
-            source = 'cache';
-            fetchedAt = json.fetchedAt || new Date().toISOString();
-            console.log(`[Static Cache] Sucesso ao carregar ${items.length} registros do cache estático.`);
-          }
-        }
-      } catch (e) {
-        console.warn('Busca no arquivo de cache estático falhou:', e);
+      const json = await res.json();
+      const rawData = Array.isArray(json.data) ? json.data : [];
+      setData(
+        rawData.map((raw: any, idx: number) => normalizeFuncionario(raw, idx)),
+      );
+      setDataSource(json.cached ? "cache" : "live");
+      setLastUpdated(json.fetchedAt || new Date().toISOString());
+    } catch (err) {
+      console.warn("Falha ao carregar alocados do banco:", err);
+      if (!isBackground) {
+        setData([]);
+        setDataSource("live");
       }
+    } finally {
+      setIsLoading(false);
+      setIsBackgroundUpdating(false);
     }
-
-    // 3. If direct static file wasn't reached, fetch DIRECTLY from Google Apps Script
-    if (!rawData || rawData.length === 0) {
-      try {
-        console.log('Iniciando busca direta de registros do Google Apps Script...');
-        const res = await fetch(DIRECT_GOOGLE_SCRIPT_URL, {
-          headers: { Accept: 'application/json, text/plain, */*' },
-        });
-        if (res.ok) {
-          const text = await res.text();
-          if (text && text.trim().startsWith('[')) {
-            const parsed = JSON.parse(text);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              rawData = parsed;
-              source = 'live';
-              fetchedAt = new Date().toISOString();
-              console.log(`[Google Script Direct] Recebidos ${parsed.length} registros com sucesso!`);
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Busca direta no Google Script falhou:', e);
-      }
-    }
-
-    // 4. CORS Proxy Fallback
-    if (!rawData || rawData.length === 0) {
-      try {
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(DIRECT_GOOGLE_SCRIPT_URL)}`;
-        const res = await fetch(proxyUrl);
-        if (res.ok) {
-          const parsed = await res.json();
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            rawData = parsed;
-            source = 'live';
-            fetchedAt = new Date().toISOString();
-          }
-        }
-      } catch (e) {
-        console.warn('Busca via CORS proxy falhou:', e);
-      }
-    }
-
-    // Process rawData if obtained
-    if (rawData && rawData.length > 0) {
-      const normalized = rawData.map((raw: FuncionarioRaw, idx: number) => normalizeFuncionario(raw, idx));
-      setData(normalized);
-      setDataSource(source);
-      setLastUpdated(fetchedAt);
-
-      // Save records into persistent IndexedDB cache asynchronously
-      saveLocalCache({
-        data: normalized,
-        fetchedAt,
-        source,
-      }).catch((e) => console.warn('Erro ao salvar cache no IndexedDB:', e));
-    } else {
-      // 5. Final Fallback: restore from local cache IndexedDB or retry static cache
-      const cached = await getLocalCache();
-      if (cached && Array.isArray(cached.data) && cached.data.length > 0) {
-        setData(cached.data);
-        setLastUpdated(cached.fetchedAt);
-        setDataSource('cache');
-      } else {
-        // Last-ditch fetch from static cache file
-        try {
-          const res = await fetch('/metarh_cache_18k.json');
-          if (res.ok) {
-            const json = await res.json();
-            const items = Array.isArray(json) ? json : (json.data || []);
-            if (Array.isArray(items) && items.length > 0) {
-              const normalized = items.map((raw: FuncionarioRaw, idx: number) => normalizeFuncionario(raw, idx));
-              setData(normalized);
-              setDataSource('cache');
-              setLastUpdated(json.fetchedAt || new Date().toISOString());
-            }
-          }
-        } catch (err) {
-          console.error('Falha crítica ao carregar base total:', err);
-          if (data.length === 0) {
-            const normalizedFallback = fallbackData.map((raw, idx) => normalizeFuncionario(raw, idx));
-            setData(normalizedFallback);
-            setDataSource('fallback');
-            setLastUpdated(new Date().toISOString());
-          }
-        }
-      }
-    }
-
-    setIsLoading(false);
-    setIsBackgroundUpdating(false);
   };
 
-  // Initial load: restore instantly from browser cache, then update in background
   useEffect(() => {
-    // Sync commercial carteira assignments database from Google Script / Server on startup
     syncCommercialAssignmentsServer().catch((e) =>
-      console.warn('Sync de carteira comercial inicial falhou:', e)
+      console.warn("Sync de carteira comercial inicial falhou:", e),
     );
-
-    const initData = async () => {
-      setIsLoading(true);
-      try {
-        const cached = await getLocalCache();
-        if (cached && Array.isArray(cached.data) && cached.data.length >= 100) {
-          setData(cached.data);
-          setLastUpdated(cached.fetchedAt);
-          setDataSource('cache');
-          setIsLoading(false);
-
-          // Revalidate in background with Google Sheets API
-          fetchData(false, true);
-          return;
-        }
-      } catch (err) {
-        console.warn('Erro ao restaurar cache local:', err);
-      }
-
-      // If no cache, perform standard load
-      fetchData(false, false);
-    };
-
-    initData();
+    fetchData(false, false);
   }, []);
 
   // Options for filter selects derived from whole dataset
   const availableGrupos = useMemo(() => {
     const set = new Set<string>();
-    roleFilteredData.forEach((d) => { if (d.grupoEconomico) set.add(d.grupoEconomico); });
+    roleFilteredData.forEach((d) => {
+      if (d.grupoEconomico) set.add(d.grupoEconomico);
+    });
     return Array.from(set).sort();
   }, [roleFilteredData]);
 
@@ -333,31 +239,41 @@ export default function App() {
 
   const availableRegioes = useMemo(() => {
     const set = new Set<string>();
-    roleFilteredData.forEach((d) => { if (d.regiao) set.add(d.regiao); });
+    roleFilteredData.forEach((d) => {
+      if (d.regiao) set.add(d.regiao);
+    });
     return Array.from(set).sort();
   }, [roleFilteredData]);
 
   const availableUFs = useMemo(() => {
     const set = new Set<string>();
-    roleFilteredData.forEach((d) => { if (d.uf) set.add(d.uf); });
+    roleFilteredData.forEach((d) => {
+      if (d.uf) set.add(d.uf);
+    });
     return Array.from(set).sort();
   }, [roleFilteredData]);
 
   const availableVinculos = useMemo(() => {
     const set = new Set<string>();
-    roleFilteredData.forEach((d) => { if (d.vinculo) set.add(d.vinculo); });
+    roleFilteredData.forEach((d) => {
+      if (d.vinculo) set.add(d.vinculo);
+    });
     return Array.from(set).sort();
   }, [roleFilteredData]);
 
   const availableClientes = useMemo(() => {
     const set = new Set<string>();
-    roleFilteredData.forEach((d) => { if (d.nomeCliente) set.add(d.nomeCliente); });
+    roleFilteredData.forEach((d) => {
+      if (d.nomeCliente) set.add(d.nomeCliente);
+    });
     return Array.from(set).sort();
   }, [roleFilteredData]);
 
   const availableCNPJs = useMemo(() => {
     const set = new Set<string>();
-    roleFilteredData.forEach((d) => { if (d.cnpjCliente) set.add(d.cnpjCliente); });
+    roleFilteredData.forEach((d) => {
+      if (d.cnpjCliente) set.add(d.cnpjCliente);
+    });
     return Array.from(set).sort();
   }, [roleFilteredData]);
 
@@ -370,23 +286,29 @@ export default function App() {
 
     // Add all assigned commercial reps from carteira assignments
     Object.values(clientAssignmentsMap).forEach((rep) => {
-      const repStr = String(rep || '').trim();
+      const repStr = String(rep || "").trim();
       if (repStr) {
         set.add(repStr);
       }
     });
 
     // Default executive names
-    const defaultReps = ['Gabi Amorim', 'Carol Giorgetti', 'Leandro Marques', 'Fernanda Bastos', 'Camila Rocha'];
+    const defaultReps = [
+      "Gabi Amorim",
+      "Carol Giorgetti",
+      "Leandro Marques",
+      "Fernanda Bastos",
+      "Camila Rocha",
+    ];
     defaultReps.forEach((r) => set.add(r));
 
     // Option for unassigned
-    set.add('Sem comercial atribuído');
+    set.add("Sem comercial atribuído");
 
     return Array.from(set).sort((a, b) => {
-      if (a === 'Sem comercial atribuído') return 1;
-      if (b === 'Sem comercial atribuído') return -1;
-      return a.localeCompare(b, 'pt-BR');
+      if (a === "Sem comercial atribuído") return 1;
+      if (b === "Sem comercial atribuído") return -1;
+      return a.localeCompare(b, "pt-BR");
     });
   }, [clientAssignmentsMap]);
 
@@ -394,11 +316,15 @@ export default function App() {
   const filteredData = useMemo(() => {
     return roleFilteredData.filter((item) => {
       // Status filter
-      if (filters.status === 'ativo' && !item.isAtivo) return false;
-      if (filters.status === 'desligado' && item.isAtivo) return false;
+      if (filters.status === "ativo" && !item.isAtivo) return false;
+      if (filters.status === "desligado" && item.isAtivo) return false;
 
       // Grupo Econômico
-      if (filters.grupoEconomico && item.grupoEconomico !== filters.grupoEconomico) return false;
+      if (
+        filters.grupoEconomico &&
+        item.grupoEconomico !== filters.grupoEconomico
+      )
+        return false;
 
       // Vínculo Empregatício
       if (filters.vinculo && item.vinculo !== filters.vinculo) return false;
@@ -414,13 +340,23 @@ export default function App() {
       // Mês filter
       if (filters.mes) {
         const MONTH_NAMES_PT = [
-          'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+          "Janeiro",
+          "Fevereiro",
+          "Março",
+          "Abril",
+          "Maio",
+          "Junho",
+          "Julho",
+          "Agosto",
+          "Setembro",
+          "Outubro",
+          "Novembro",
+          "Dezembro",
         ];
         let mesNum = parseInt(filters.mes, 10);
         if (isNaN(mesNum)) {
           const idx = MONTH_NAMES_PT.findIndex(
-            (m) => m.toLowerCase() === filters.mes.toLowerCase()
+            (m) => m.toLowerCase() === filters.mes.toLowerCase(),
           );
           if (idx !== -1) mesNum = idx + 1;
         }
@@ -457,20 +393,25 @@ export default function App() {
       // Atendimento Comercial
       const assignedRep = (
         clientAssignmentsMap[item.nomeCliente] ||
-        (item.grupoEconomico ? clientAssignmentsMap[item.grupoEconomico] : '') ||
-        ''
+        (item.grupoEconomico
+          ? clientAssignmentsMap[item.grupoEconomico]
+          : "") ||
+        ""
       ).trim();
 
       if (filters.comercial) {
         const target = filters.comercial.toLowerCase().trim();
         const currentRep = assignedRep.toLowerCase().trim();
 
-        if (target === 'sem comercial atribuído' || target === 'sem comercial') {
-          if (currentRep !== '') return false;
+        if (
+          target === "sem comercial atribuído" ||
+          target === "sem comercial"
+        ) {
+          if (currentRep !== "") return false;
         } else {
           if (!currentRep) return false;
-          const normTarget = target.replace(/_/g, ' ');
-          const normRep = currentRep.replace(/_/g, ' ');
+          const normTarget = target.replace(/_/g, " ");
+          const normRep = currentRep.replace(/_/g, " ");
           const matches =
             normRep === normTarget ||
             normRep.includes(normTarget) ||
@@ -483,8 +424,16 @@ export default function App() {
       if (filters.cargo && item.cargo !== filters.cargo) return false;
 
       // Salário Min & Max
-      if (filters.minSalario !== '' && item.salario < Number(filters.minSalario)) return false;
-      if (filters.maxSalario !== '' && item.salario > Number(filters.maxSalario)) return false;
+      if (
+        filters.minSalario !== "" &&
+        item.salario < Number(filters.minSalario)
+      )
+        return false;
+      if (
+        filters.maxSalario !== "" &&
+        item.salario > Number(filters.maxSalario)
+      )
+        return false;
 
       // Global Search
       if (filters.searchQuery.trim()) {
@@ -513,14 +462,24 @@ export default function App() {
     if (filteredData.length === 0) return;
 
     const headers = [
-      'Cód. Func.', 'Nome Funcionário', 'Status', 'Vínculo Empregatício', 'Salário Base (R$)',
-      'Cargo ou Função', 'Grupo Econômico', 'Cliente', 'Região/Cidade', 'Data Admissão', 'Data Demissão', 'Motivo Desligamento'
+      "Cód. Func.",
+      "Nome Funcionário",
+      "Status",
+      "Vínculo Empregatício",
+      "Salário Base (R$)",
+      "Cargo ou Função",
+      "Grupo Econômico",
+      "Cliente",
+      "Região/Cidade",
+      "Data Admissão",
+      "Data Demissão",
+      "Motivo Desligamento",
     ];
 
     const rows = filteredData.map((d) => [
       d.id,
       `"${d.nome.replace(/"/g, '""')}"`,
-      d.isAtivo ? 'ATIVO' : 'DESLIGADO',
+      d.isAtivo ? "ATIVO" : "DESLIGADO",
       `"${d.vinculo.replace(/"/g, '""')}"`,
       d.salario.toFixed(2),
       `"${d.cargo.replace(/"/g, '""')}"`,
@@ -528,16 +487,21 @@ export default function App() {
       `"${d.nomeCliente.replace(/"/g, '""')}"`,
       `"${d.regiao.replace(/"/g, '""')}"`,
       d.dataAdmissao,
-      d.dataDemissao || '',
-      `"${d.motivoDesligamento.replace(/"/g, '""')}"`
+      d.dataDemissao || "",
+      `"${d.motivoDesligamento.replace(/"/g, '""')}"`,
     ]);
 
-    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const csvContent =
+      "\uFEFF" +
+      [headers.join(";"), ...rows.map((r) => r.join(";"))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.setAttribute('download', `METARH_Alocados_Filtrados_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute(
+      "download",
+      `METARH_Alocados_Filtrados_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -549,7 +513,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-['Barlow',sans-serif]">
-      
       {/* App Header */}
       <Header
         metrics={metrics}
@@ -565,7 +528,6 @@ export default function App() {
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        
         {/* Global Filter Bar */}
         <FilterBar
           filters={filters}
@@ -589,7 +551,7 @@ export default function App() {
         <KPICards metrics={metrics} />
 
         {/* Navigation Bar with Collapsible Outros Estudos */}
-        {currentUser?.role === 'RH' ? (
+        {currentUser?.role === "RH" ? (
           <div className="space-y-3 mb-6">
             <div className="p-2 bg-gradient-to-r from-emerald-950 via-[#134e4a] to-[#064e3b] rounded-2xl border border-emerald-800/50 shadow-sm flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2 no-scrollbar">
@@ -598,11 +560,11 @@ export default function App() {
                 </span>
 
                 <button
-                  onClick={() => setActiveTab('rh_empresas_comerciais')}
+                  onClick={() => setActiveTab("rh_empresas_comerciais")}
                   className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                    activeTab === 'rh_empresas_comerciais'
-                      ? 'bg-white text-emerald-950 shadow-md font-black ring-2 ring-emerald-300'
-                      : 'bg-white/10 text-emerald-100 hover:bg-white/20'
+                    activeTab === "rh_empresas_comerciais"
+                      ? "bg-white text-emerald-950 shadow-md font-black ring-2 ring-emerald-300"
+                      : "bg-white/10 text-emerald-100 hover:bg-white/20"
                   }`}
                 >
                   <Building2 className="w-4 h-4 text-amber-300" />
@@ -610,11 +572,11 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('talent_bank')}
+                  onClick={() => setActiveTab("talent_bank")}
                   className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                    activeTab === 'talent_bank'
-                      ? 'bg-white text-emerald-950 shadow-md font-black ring-2 ring-emerald-300'
-                      : 'bg-white/10 text-emerald-100 hover:bg-white/20'
+                    activeTab === "talent_bank"
+                      ? "bg-white text-emerald-950 shadow-md font-black ring-2 ring-emerald-300"
+                      : "bg-white/10 text-emerald-100 hover:bg-white/20"
                   }`}
                 >
                   <UserCheck className="w-4 h-4 text-emerald-400" />
@@ -630,9 +592,9 @@ export default function App() {
         ) : (
           <div className="space-y-3 mb-6">
             {/* Dedicated Commercial Modules Bar */}
-            {(currentUser?.role === 'Comercial' ||
-              currentUser?.role === 'Gerencial Comercial' ||
-              currentUser?.role === 'Administrador') && (
+            {(currentUser?.role === "Comercial" ||
+              currentUser?.role === "Gerencial Comercial" ||
+              currentUser?.role === "Administrador") && (
               <div className="p-2 bg-gradient-to-r from-[#2c0d4a] via-[#401669] to-[#250a40] rounded-2xl border border-purple-900/50 shadow-sm flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2 no-scrollbar">
                   <span className="text-[10px] uppercase tracking-wider font-extrabold text-purple-200 px-3 py-1.5 bg-white/10 rounded-xl flex-shrink-0 border border-white/10">
@@ -640,13 +602,14 @@ export default function App() {
                   </span>
 
                   {/* Dedicated Commercial Head Tab */}
-                  {(currentUser?.role === 'Gerencial Comercial' || currentUser?.role === 'Administrador') && (
+                  {(currentUser?.role === "Gerencial Comercial" ||
+                    currentUser?.role === "Administrador") && (
                     <button
-                      onClick={() => setActiveTab('comercial_gestao')}
+                      onClick={() => setActiveTab("comercial_gestao")}
                       className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                        activeTab === 'comercial_gestao'
-                          ? 'bg-white text-[#2c0d4a] shadow-md font-black ring-2 ring-purple-300'
-                          : 'bg-white/10 text-purple-100 hover:bg-white/20'
+                        activeTab === "comercial_gestao"
+                          ? "bg-white text-[#2c0d4a] shadow-md font-black ring-2 ring-purple-300"
+                          : "bg-white/10 text-purple-100 hover:bg-white/20"
                       }`}
                     >
                       <Users className="w-4 h-4 text-purple-300" />
@@ -656,11 +619,11 @@ export default function App() {
 
                   {/* Dedicated Commercial Rep Portfolio Tab */}
                   <button
-                    onClick={() => setActiveTab('comercial_carteira')}
+                    onClick={() => setActiveTab("comercial_carteira")}
                     className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                      activeTab === 'comercial_carteira'
-                        ? 'bg-white text-[#2c0d4a] shadow-md font-black ring-2 ring-purple-300'
-                        : 'bg-white/10 text-purple-100 hover:bg-white/20'
+                      activeTab === "comercial_carteira"
+                        ? "bg-white text-[#2c0d4a] shadow-md font-black ring-2 ring-purple-300"
+                        : "bg-white/10 text-purple-100 hover:bg-white/20"
                     }`}
                   >
                     <BarChart3 className="w-4 h-4 text-amber-300" />
@@ -682,11 +645,11 @@ export default function App() {
                 </span>
 
                 <button
-                  onClick={() => setActiveTab('overview')}
+                  onClick={() => setActiveTab("overview")}
                   className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                    activeTab === 'overview'
-                      ? 'bg-[#401669] text-white shadow-xs'
-                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
+                    activeTab === "overview"
+                      ? "bg-[#401669] text-white shadow-xs"
+                      : "text-slate-700 hover:text-slate-900 hover:bg-slate-300/50"
                   }`}
                 >
                   <LayoutDashboard className="w-4 h-4" />
@@ -694,11 +657,11 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('temporal')}
+                  onClick={() => setActiveTab("temporal")}
                   className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                    activeTab === 'temporal'
-                      ? 'bg-[#401669] text-white shadow-xs'
-                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
+                    activeTab === "temporal"
+                      ? "bg-[#401669] text-white shadow-xs"
+                      : "text-slate-700 hover:text-slate-900 hover:bg-slate-300/50"
                   }`}
                 >
                   <Calendar className="w-4 h-4" />
@@ -706,11 +669,11 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('salaries')}
+                  onClick={() => setActiveTab("salaries")}
                   className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                    activeTab === 'salaries'
-                      ? 'bg-[#401669] text-white shadow-xs'
-                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
+                    activeTab === "salaries"
+                      ? "bg-[#401669] text-white shadow-xs"
+                      : "text-slate-700 hover:text-slate-900 hover:bg-slate-300/50"
                   }`}
                 >
                   <Briefcase className="w-4 h-4" />
@@ -718,11 +681,11 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('regional')}
+                  onClick={() => setActiveTab("regional")}
                   className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                    activeTab === 'regional'
-                      ? 'bg-[#401669] text-white shadow-xs'
-                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/50'
+                    activeTab === "regional"
+                      ? "bg-[#401669] text-white shadow-xs"
+                      : "text-slate-700 hover:text-slate-900 hover:bg-slate-300/50"
                   }`}
                 >
                   <MapPin className="w-4 h-4" />
@@ -736,19 +699,39 @@ export default function App() {
                   Outros Estudos
                 </span>
                 <button
-                  onClick={() => setIsOutrosEstudosExpanded(!isOutrosEstudosExpanded)}
-                  title={isOutrosEstudosExpanded ? "Recolher Outros Estudos" : "Expandir Outros Estudos"}
+                  onClick={() =>
+                    setIsOutrosEstudosExpanded(!isOutrosEstudosExpanded)
+                  }
+                  title={
+                    isOutrosEstudosExpanded
+                      ? "Recolher Outros Estudos"
+                      : "Expandir Outros Estudos"
+                  }
                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer border ${
-                    isOutrosEstudosExpanded || ['contracts', 'groups', 'rh_empresas_comerciais', 'talent_bank', 'table'].includes(activeTab)
-                      ? 'bg-[#401669] text-white border-[#401669] shadow-xs'
-                      : 'bg-white text-[#401669] border-slate-300 hover:bg-purple-100'
+                    isOutrosEstudosExpanded ||
+                    [
+                      "contracts",
+                      "groups",
+                      "rh_empresas_comerciais",
+                      "talent_bank",
+                      "table",
+                    ].includes(activeTab)
+                      ? "bg-[#401669] text-white border-[#401669] shadow-xs"
+                      : "bg-white text-[#401669] border-slate-300 hover:bg-purple-100"
                   }`}
                 >
                   <ChevronDown
                     className={`w-4 h-4 transition-transform duration-300 ${
-                      isOutrosEstudosExpanded || ['contracts', 'groups', 'rh_empresas_comerciais', 'talent_bank', 'table'].includes(activeTab)
-                        ? 'rotate-180'
-                        : ''
+                      isOutrosEstudosExpanded ||
+                      [
+                        "contracts",
+                        "groups",
+                        "rh_empresas_comerciais",
+                        "talent_bank",
+                        "table",
+                      ].includes(activeTab)
+                        ? "rotate-180"
+                        : ""
                     }`}
                   />
                 </button>
@@ -756,32 +739,39 @@ export default function App() {
             </div>
 
             {/* Expanded Outros Estudos Sub-Bar */}
-            {(isOutrosEstudosExpanded || ['contracts', 'groups', 'rh_empresas_comerciais', 'talent_bank', 'table'].includes(activeTab)) && (
+            {(isOutrosEstudosExpanded ||
+              [
+                "contracts",
+                "groups",
+                "rh_empresas_comerciais",
+                "talent_bank",
+                "table",
+              ].includes(activeTab)) && (
               <div className="flex overflow-x-auto gap-1.5 p-1.5 bg-purple-50/90 rounded-2xl border border-purple-200/80 no-scrollbar items-center animate-fadeIn">
                 <span className="text-[10px] uppercase tracking-wider font-extrabold text-[#401669] px-3 py-1 bg-purple-100/80 rounded-xl flex-shrink-0 flex items-center gap-1">
                   <FolderKanban className="w-3 h-3" /> Outros Estudos:
                 </span>
 
                 <button
-                  onClick={() => setActiveTab('contracts')}
+                  onClick={() => setActiveTab("contracts")}
                   className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                    activeTab === 'contracts'
-                      ? 'bg-rose-600 text-white shadow-xs'
-                      : 'text-rose-800 hover:bg-rose-100/70'
+                    activeTab === "contracts"
+                      ? "bg-rose-600 text-white shadow-xs"
+                      : "text-rose-800 hover:bg-rose-100/70"
                   }`}
                 >
                   <AlertTriangle className="w-4 h-4" />
                   Contratos a Vencer
                 </button>
 
-                {currentUser?.role !== 'Cliente' && (
+                {currentUser?.role !== "Cliente" && (
                   <>
                     <button
-                      onClick={() => setActiveTab('groups')}
+                      onClick={() => setActiveTab("groups")}
                       className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                        activeTab === 'groups'
-                          ? 'bg-[#401669] text-white shadow-xs'
-                          : 'text-purple-900 hover:bg-purple-100/70'
+                        activeTab === "groups"
+                          ? "bg-[#401669] text-white shadow-xs"
+                          : "text-purple-900 hover:bg-purple-100/70"
                       }`}
                     >
                       <Building2 className="w-4 h-4" />
@@ -789,11 +779,11 @@ export default function App() {
                     </button>
 
                     <button
-                      onClick={() => setActiveTab('rh_empresas_comerciais')}
+                      onClick={() => setActiveTab("rh_empresas_comerciais")}
                       className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                        activeTab === 'rh_empresas_comerciais'
-                          ? 'bg-[#401669] text-white shadow-xs'
-                          : 'text-purple-900 hover:bg-purple-100/70'
+                        activeTab === "rh_empresas_comerciais"
+                          ? "bg-[#401669] text-white shadow-xs"
+                          : "text-purple-900 hover:bg-purple-100/70"
                       }`}
                     >
                       <Building2 className="w-4 h-4 text-amber-400" />
@@ -801,11 +791,11 @@ export default function App() {
                     </button>
 
                     <button
-                      onClick={() => setActiveTab('talent_bank')}
+                      onClick={() => setActiveTab("talent_bank")}
                       className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                        activeTab === 'talent_bank'
-                          ? 'bg-[#401669] text-white shadow-xs'
-                          : 'text-purple-900 hover:bg-purple-100/70'
+                        activeTab === "talent_bank"
+                          ? "bg-[#401669] text-white shadow-xs"
+                          : "text-purple-900 hover:bg-purple-100/70"
                       }`}
                     >
                       <UserCheck className="w-4 h-4 text-amber-500 fill-amber-400" />
@@ -815,11 +805,11 @@ export default function App() {
                 )}
 
                 <button
-                  onClick={() => setActiveTab('table')}
+                  onClick={() => setActiveTab("table")}
                   className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
-                    activeTab === 'table'
-                      ? 'bg-[#401669] text-white shadow-xs'
-                      : 'text-purple-900 hover:bg-purple-100/70'
+                    activeTab === "table"
+                      ? "bg-[#401669] text-white shadow-xs"
+                      : "text-purple-900 hover:bg-purple-100/70"
                   }`}
                 >
                   <Table className="w-4 h-4" />
@@ -834,12 +824,16 @@ export default function App() {
         {isLoading ? (
           <div className="bg-white rounded-2xl p-12 text-center shadow-xs border border-slate-200">
             <div className="w-10 h-10 border-4 border-[#401669] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <h3 className="text-base font-bold text-slate-800">Carregando Banco de Dados METARH...</h3>
-            <p className="text-xs text-slate-500 mt-1">Buscando base de alocações e movimentações do Google Apps Script em tempo real.</p>
+            <h3 className="text-base font-bold text-slate-800">
+              Carregando Banco de Dados METARH...
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Buscando alocados no banco SQL.
+            </p>
           </div>
         ) : (
           <ErrorBoundary key={activeTab}>
-            {activeTab === 'comercial_carteira' && (
+            {activeTab === "comercial_carteira" && (
               <CommercialPortfolioTab
                 data={roleFilteredData}
                 currentUser={currentUser!}
@@ -847,20 +841,19 @@ export default function App() {
                 onSelectWorker={(w) => setSelectedWorker(w)}
                 onSelectClient={(clientName) => {
                   setFilters({ ...filters, cliente: clientName });
-                  setActiveTab('overview');
+                  setActiveTab("overview");
                 }}
-                onUpdateCurrentUser={(updatedUser) => setCurrentUser(updatedUser)}
+                onUpdateCurrentUser={(updatedUser) =>
+                  setCurrentUser(updatedUser)
+                }
               />
             )}
 
-            {activeTab === 'comercial_gestao' && (
-              <CommercialManagementTab
-                data={data}
-                currentUser={currentUser!}
-              />
+            {activeTab === "comercial_gestao" && (
+              <CommercialManagementTab data={data} currentUser={currentUser!} />
             )}
 
-            {activeTab === 'overview' && (
+            {activeTab === "overview" && (
               <OverviewTab
                 data={filteredData}
                 metrics={metrics}
@@ -868,16 +861,16 @@ export default function App() {
                 selectedAnoFilter={filters.ano}
                 onSelectGrupo={(grupo) => {
                   setFilters({ ...filters, grupoEconomico: grupo });
-                  setActiveTab('groups');
+                  setActiveTab("groups");
                 }}
                 onSelectCargo={(cargo) => {
                   setFilters({ ...filters, cargo });
-                  setActiveTab('salaries');
+                  setActiveTab("salaries");
                 }}
               />
             )}
 
-            {activeTab === 'temporal' && (
+            {activeTab === "temporal" && (
               <TemporalTab
                 data={filteredData}
                 selectedAnoFilter={filters.ano}
@@ -886,14 +879,14 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'contracts' && (
+            {activeTab === "contracts" && (
               <ContractExpirationsTab
                 data={filteredData}
                 onSelectWorker={(w) => setSelectedWorker(w)}
               />
             )}
 
-            {activeTab === 'salaries' && (
+            {activeTab === "salaries" && (
               <VacanciesAndSalariesTab
                 data={filteredData}
                 onSelectWorker={(w) => setSelectedWorker(w)}
@@ -901,21 +894,23 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'groups' && (
+            {activeTab === "groups" && (
               <EconomicGroupsTab
                 data={filteredData}
-                onSelectGrupo={(grupo) => setFilters({ ...filters, grupoEconomico: grupo })}
+                onSelectGrupo={(grupo) =>
+                  setFilters({ ...filters, grupoEconomico: grupo })
+                }
               />
             )}
 
-            {activeTab === 'regional' && (
+            {activeTab === "regional" && (
               <RegionalTab
                 data={filteredData}
                 onSelectRegiao={(regiao) => setFilters({ ...filters, regiao })}
               />
             )}
 
-            {activeTab === 'talent_bank' && (
+            {activeTab === "talent_bank" && (
               <TalentBankTab
                 data={roleFilteredData}
                 clientAssignmentsMap={clientAssignmentsMap}
@@ -923,7 +918,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'rh_empresas_comerciais' && (
+            {activeTab === "rh_empresas_comerciais" && (
               <CompanyCommercialsTab
                 data={roleFilteredData}
                 clientAssignmentsMap={clientAssignmentsMap}
@@ -931,31 +926,32 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'table' && (
+            {activeTab === "table" && (
               <DataTableTab
                 data={filteredData}
                 onSelectWorker={(w) => setSelectedWorker(w)}
                 onExportCSV={exportCSV}
-                isClientRole={currentUser?.role === 'Cliente'}
+                isClientRole={currentUser?.role === "Cliente"}
               />
             )}
           </ErrorBoundary>
         )}
-
       </main>
 
       {/* Detail Modal */}
       <EmployeeModal
         worker={selectedWorker}
-        isClientRole={currentUser?.role === 'Cliente'}
+        isClientRole={currentUser?.role === "Cliente"}
         assignedRep={
           selectedWorker
             ? (
                 clientAssignmentsMap[selectedWorker.nomeCliente] ||
-                (selectedWorker.grupoEconomico ? clientAssignmentsMap[selectedWorker.grupoEconomico] : '') ||
-                ''
+                (selectedWorker.grupoEconomico
+                  ? clientAssignmentsMap[selectedWorker.grupoEconomico]
+                  : "") ||
+                ""
               ).trim()
-            : ''
+            : ""
         }
         onClose={() => setSelectedWorker(null)}
       />
@@ -984,7 +980,6 @@ export default function App() {
         dataSource={dataSource}
         totalRecords={roleFilteredData.length}
       />
-
     </div>
   );
 }
