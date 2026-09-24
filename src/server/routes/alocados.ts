@@ -6,7 +6,8 @@ const router = Router();
 router.get('/alocados', async (req, res) => {
   try {
     const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
-    const payload = await getAlocados(refresh);
+    const updatedBy = String(req.query.by || '').trim() || 'Atualização automática';
+    const payload = await getAlocados(refresh, updatedBy);
     return res.json(payload);
   } catch (err: any) {
     console.error('[SQL alocados]', err);

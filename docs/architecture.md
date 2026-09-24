@@ -38,7 +38,7 @@ Dashboard React/Vite de alocados com Express local. Fonte de leitura e gravaçã
 - `DATABASE_URL` — connection string SQL Server / Azure SQL
 - `APP_URL` — legado
 - `PORT` — servidor Express (default 3000)
-- `ALOCADOS_CACHE_TTL_MS` — validade do cache em memória de `/api/alocados` (default 900000, 15 min)
+- `ALOCADOS_CACHE_TTL_MS` — validade do cache em memória de `/api/alocados` (default 7200000, 2 h)
 
 ## O que não construir agora
 

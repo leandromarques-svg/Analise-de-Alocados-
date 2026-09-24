@@ -1,12 +1,14 @@
 import { prisma } from './prisma.ts';
 import { toFuncionario } from './presenters.ts';
 
-const DEFAULT_TTL_MS = 15 * 60 * 1000;
+const DEFAULT_TTL_MS = 2 * 60 * 60 * 1000;
+const AUTOMATIC_UPDATE = 'Atualização automática';
 
 export type AlocadosPayload = {
   success: true;
   source: 'sql' | 'cache';
   fetchedAt: string;
+  updatedBy: string;
   cached: boolean;
   total: number;
   data: ReturnType<typeof toFuncionario>[];
@@ -21,7 +23,7 @@ function ttlMs(): number {
   return DEFAULT_TTL_MS;
 }
 
-async function readSql(): Promise<AlocadosPayload> {
+async function readSql(updatedBy: string): Promise<AlocadosPayload> {
   const started = Date.now();
   const rows = await prisma.employee.findMany({ orderBy: { id: 'asc' } });
   const data = rows.map(toFuncionario);
@@ -29,6 +31,7 @@ async function readSql(): Promise<AlocadosPayload> {
     success: true,
     source: 'sql',
     fetchedAt: new Date().toISOString(),
+    updatedBy,
     cached: false,
     total: data.length,
     data,
@@ -38,16 +41,16 @@ async function readSql(): Promise<AlocadosPayload> {
   return payload;
 }
 
-function startRead(): Promise<AlocadosPayload> {
+function startRead(updatedBy: string): Promise<AlocadosPayload> {
   if (!inflight) {
-    inflight = readSql().finally(() => {
+    inflight = readSql(updatedBy).finally(() => {
       inflight = null;
     });
   }
   return inflight;
 }
 
-export function getAlocados(refresh: boolean): Promise<AlocadosPayload> {
+export function getAlocados(refresh: boolean, updatedBy = AUTOMATIC_UPDATE): Promise<AlocadosPayload> {
   const now = Date.now();
   const fresh = memory != null && now - memory.storedAt < ttlMs();
 
@@ -58,12 +61,12 @@ export function getAlocados(refresh: boolean): Promise<AlocadosPayload> {
   }
 
   if (!refresh && memory) {
-    void startRead().catch((err) => console.error('[METARH alocados] atualização em segundo plano', err));
+    void startRead(AUTOMATIC_UPDATE).catch((err) => console.error('[METARH alocados] atualização em segundo plano', err));
     console.log(`[METARH alocados] cache vencido, devolvendo ${memory.payload.total} linhas e atualizando`);
     return Promise.resolve({ ...memory.payload, source: 'cache', cached: true });
   }
 
-  return startRead();
+  return startRead(updatedBy);
 }
 
 export function warmAlocadosCache() {

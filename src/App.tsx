@@ -77,6 +77,7 @@ export default function App() {
     "live" | "cache" | "stale_cache" | "fallback"
   >("live");
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [updatedBy, setUpdatedBy] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
     | "overview"
     | "temporal"
@@ -179,17 +180,21 @@ export default function App() {
     return data;
   }, [data, currentUser]);
 
-  const fetchData = async (_forceRefresh = false, isBackground = false) => {
-    if (isBackground) {
+  const fetchData = async (forceRefresh = false) => {
+    const hasData = data.length > 0;
+    if (hasData) {
       setIsBackgroundUpdating(true);
     } else {
       setIsLoading(true);
     }
 
     try {
-      const res = await fetch(
-        _forceRefresh ? "/api/alocados?refresh=1" : "/api/alocados",
-      );
+      const params = new URLSearchParams();
+      if (forceRefresh) params.set("refresh", "1");
+      const who = currentUser?.username?.trim();
+      if (forceRefresh && who) params.set("by", who);
+      const query = params.toString();
+      const res = await fetch(query ? `/api/alocados?${query}` : "/api/alocados");
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -198,11 +203,12 @@ export default function App() {
       setData(
         rawData.map((raw: any, idx: number) => normalizeFuncionario(raw, idx)),
       );
-      setDataSource(json.cached ? "cache" : "live");
+      setDataSource("live");
       setLastUpdated(json.fetchedAt || new Date().toISOString());
+      setUpdatedBy(json.updatedBy || null);
     } catch (err) {
       console.warn("Falha ao carregar alocados do banco:", err);
-      if (!isBackground) {
+      if (!hasData) {
         setData([]);
         setDataSource("live");
       }
@@ -216,7 +222,7 @@ export default function App() {
     syncCommercialAssignmentsServer().catch((e) =>
       console.warn("Sync de carteira comercial inicial falhou:", e),
     );
-    fetchData(false, false);
+    fetchData(false);
   }, []);
 
   // Options for filter selects derived from whole dataset
@@ -517,9 +523,10 @@ export default function App() {
       <Header
         metrics={metrics}
         lastUpdated={lastUpdated}
+        updatedBy={updatedBy}
         isLoading={isLoading}
         isBackgroundUpdating={isBackgroundUpdating}
-        onRefresh={() => fetchData(true, false)}
+        onRefresh={() => fetchData(true)}
         onExportCSV={exportCSV}
         dataSource={dataSource}
         currentUser={currentUser}

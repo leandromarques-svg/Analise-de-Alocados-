@@ -5,6 +5,7 @@ import { DashboardMetrics, User } from '../types';
 interface HeaderProps {
   metrics: DashboardMetrics;
   lastUpdated: string | null;
+  updatedBy?: string | null;
   isLoading: boolean;
   isBackgroundUpdating?: boolean;
   onRefresh: () => void;
@@ -18,11 +19,11 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   metrics,
   lastUpdated,
+  updatedBy,
   isLoading,
   isBackgroundUpdating = false,
   onRefresh,
   onExportCSV,
-  dataSource,
   currentUser,
   onOpenUsersModal,
   onLogout,
@@ -125,23 +126,16 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Status indicator badge */}
             <div className="bg-slate-100 border border-slate-200/80 px-2.5 py-1.5 rounded-xl text-[11px] flex items-center gap-2 font-medium text-slate-600">
-              <span className={`w-2 h-2 rounded-full ${
-                isBackgroundUpdating ? 'bg-amber-500 animate-ping' :
-                dataSource === 'live' ? 'bg-emerald-500 animate-pulse' :
-                dataSource === 'cache' ? 'bg-indigo-500' : 'bg-amber-500'
-              }`} />
+              <span className={`w-2 h-2 rounded-full ${isLoading ? 'bg-amber-500' : 'bg-emerald-500'}`} />
               <span className="hidden md:inline">
-                {isLoading ? 'Carregando...' : 
-                 isBackgroundUpdating ? 'Sincronizando...' :
-                 dataSource === 'live' ? 'Ao Vivo' : 'Cache Local'}
+                {isLoading ? 'Carregando...' : 'Ao Vivo'}
               </span>
             </div>
 
             <div className="relative group/bi">
               <button
                 onClick={onRefresh}
-                disabled={isLoading || isBackgroundUpdating}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 border border-slate-200 active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 border border-slate-200 active:scale-95 cursor-pointer"
                 title="Buscar a leitura mais recente"
                 aria-describedby="bi-atualizacao-tip"
               >
@@ -165,10 +159,10 @@ export const Header: React.FC<HeaderProps> = ({
                     O BI coleta, organiza e entrega esses dados com agilidade. A leitura sai direto da tabela de funcionários do GI Info, sem planilha no caminho.
                   </p>
                   <p className="mt-3 text-xs font-semibold text-slate-700">
-                    Atualização dinâmica, 6 vezes ao dia, a cada 2 horas, no minuto 10.
+                    Seis vezes ao dia, a cada 2 horas. O dado fica disponível no horário fechado.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {['08:10', '10:10', '12:10', '14:10', '16:10', '18:10'].map((slot) => (
+                    {['09:00', '11:00', '13:00', '15:00', '17:00', '19:00'].map((slot) => (
                       <span
                         key={slot}
                         className="rounded-lg bg-[#faf6fd] px-2 py-1 text-[11px] font-bold text-[#401669]"
@@ -177,6 +171,21 @@ export const Header: React.FC<HeaderProps> = ({
                       </span>
                     ))}
                   </div>
+                  {lastUpdated && (
+                    <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+                      Última atualização em{' '}
+                      <span className="font-semibold text-[#401669]">
+                        {new Date(lastUpdated).toLocaleString('pt-BR')}
+                      </span>
+                      {updatedBy ? (
+                        <>
+                          {' '}por <span className="font-semibold text-[#401669]">{updatedBy}</span>.
+                        </>
+                      ) : (
+                        '.'
+                      )}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

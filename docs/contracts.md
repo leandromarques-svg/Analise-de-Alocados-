@@ -17,7 +17,7 @@ Status: active
 - Auth: none
 - Response 200: `{ success: true, source: "sql"|"cache", fetchedAt, cached, total, data: Funcionario[] }`
 - Lista vazia é resposta válida (ADF ainda não carregou)
-- O Express guarda a lista em memória por 15 minutos (`ALOCADOS_CACHE_TTL_MS`). Dentro do prazo a resposta sai do cache. Fora do prazo devolve o cache e atualiza o banco em segundo plano. `?refresh=1` espera uma leitura nova.
+- O Express guarda a lista em memória por 2 horas (`ALOCADOS_CACHE_TTL_MS`). `?refresh=1` lê o banco de novo. `by` grava quem pediu. A resposta traz `fetchedAt` e `updatedBy`.
 - `fetchedAt` é o horário da leitura no SQL, mesmo quando `cached` é true
 - Erros: 503 se o banco não conectar
 - Na Vercel a função `api/[...path].ts` é o mesmo Express: `/api/alocados`, `/api/users`, `/api/commercial-assignments` e `/api/sql/login`
