@@ -189,23 +189,40 @@ export default function App() {
     }
 
     try {
-      const params = new URLSearchParams();
-      if (forceRefresh) params.set("refresh", "1");
+      const PAGE_SIZE = 4000;
       const who = currentUser?.username?.trim();
-      if (forceRefresh && who) params.set("by", who);
-      const query = params.toString();
-      const res = await fetch(query ? `/api/alocados?${query}` : "/api/alocados");
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+      const rawData: any[] = [];
+      let offset = 0;
+      let total = Number.POSITIVE_INFINITY;
+      let fetchedAt: string | null = null;
+      let whoUpdated: string | null = null;
+
+      while (offset < total && rawData.length < 100_000) {
+        const params = new URLSearchParams();
+        params.set("offset", String(offset));
+        params.set("limit", String(PAGE_SIZE));
+        if (forceRefresh && offset === 0) {
+          params.set("refresh", "1");
+          if (who) params.set("by", who);
+        }
+        const res = await fetch(`/api/alocados?${params}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const json = await res.json();
+        const page = Array.isArray(json.data) ? json.data : [];
+        total = Number(json.total) || 0;
+        rawData.push(...page);
+        fetchedAt = json.fetchedAt || fetchedAt;
+        whoUpdated = json.updatedBy || whoUpdated;
+        if (page.length === 0) break;
+        offset += page.length;
       }
-      const json = await res.json();
-      const rawData = Array.isArray(json.data) ? json.data : [];
-      setData(
-        rawData.map((raw: any, idx: number) => normalizeFuncionario(raw, idx)),
-      );
+
+      setData(rawData.map((raw: any, idx: number) => normalizeFuncionario(raw, idx)));
       setDataSource("live");
-      setLastUpdated(json.fetchedAt || new Date().toISOString());
-      setUpdatedBy(json.updatedBy || null);
+      setLastUpdated(fetchedAt || new Date().toISOString());
+      setUpdatedBy(whoUpdated);
     } catch (err) {
       console.warn("Falha ao carregar alocados do banco:", err);
       if (!hasData) {

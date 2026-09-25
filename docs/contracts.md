@@ -15,9 +15,10 @@ Status: active
 ### `GET /api/alocados`
 
 - Auth: none
-- Response 200: `{ success: true, source: "sql"|"cache", fetchedAt, cached, total, data: Funcionario[] }`
+- Response 200: `{ success: true, source: "sql"|"cache", fetchedAt, updatedBy, cached, total, offset, limit, data: Funcionario[] }`
+- `data` é uma página de no máximo 4000 registros. `total` é a base inteira. O cliente pede `offset` até cobrir `total`.
 - Lista vazia é resposta válida (ADF ainda não carregou)
-- O Express guarda a lista em memória por 2 horas (`ALOCADOS_CACHE_TTL_MS`). `?refresh=1` lê o banco de novo. `by` grava quem pediu. A resposta traz `fetchedAt` e `updatedBy`.
+- O Express guarda a lista inteira em memória por 2 horas (`ALOCADOS_CACHE_TTL_MS`). `?refresh=1` na primeira página lê o banco de novo. `by` grava quem pediu. A resposta traz `fetchedAt` e `updatedBy`.
 - `fetchedAt` é o horário da leitura no SQL, mesmo quando `cached` é true
 - Erros: 503 se o banco não conectar
 - Na Vercel a função `api/[...path].ts` é o mesmo Express: `/api/alocados`, `/api/users`, `/api/commercial-assignments` e `/api/sql/login`

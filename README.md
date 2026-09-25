@@ -62,7 +62,7 @@ Quando o prazo vence, a tela ainda abre com o dado anterior e o servidor atualiz
 
 ## Rotas
 
-- `GET /api/alocados` — a lista. Aceita `?refresh=1`.
+- `GET /api/alocados` — a lista em páginas de até 4000 (`offset`, `limit`). Aceita `?refresh=1` na primeira página.
 - `ALL /api/users` — consulta, grava e apaga usuário (`action=getUsers|saveUser|deleteUser`).
 - `ALL /api/commercial-assignments` — lê e grava a carteira.
 - `POST /api/sql/login` — login no SQL.
