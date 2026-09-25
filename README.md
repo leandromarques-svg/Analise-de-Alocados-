@@ -72,7 +72,7 @@ O detalhe do contrato está em `docs/contracts.md`. O desenho das tabelas está 
 
 ## Vercel
 
-A função `api/[...path].ts` é o mesmo Express. Login, usuários, carteira e alocados passam por ela.
+A função `api/[...path].js` é o mesmo Express, empacotado no build. Login, usuários, carteira e alocados passam por ela.
 
 Subir o Git sozinho não liga o site. Na Vercel eu preciso da `DATABASE_URL` nas variáveis do projeto, e no Azure SQL o firewall tem que aceitar a conexão que sai de lá. A função corta em 60 segundos. A primeira leitura dos alocados pode cair nesse limite. Login e carteira são consultas pequenas e não sofrem o mesmo problema.
 

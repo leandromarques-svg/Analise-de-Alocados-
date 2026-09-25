@@ -21,7 +21,7 @@ Status: active
 - O Express guarda a lista inteira em memória por 2 horas (`ALOCADOS_CACHE_TTL_MS`). `?refresh=1` na primeira página lê o banco de novo. `by` grava quem pediu. A resposta traz `fetchedAt` e `updatedBy`.
 - `fetchedAt` é o horário da leitura no SQL, mesmo quando `cached` é true
 - Erros: 503 se o banco não conectar
-- Na Vercel a função `api/[...path].ts` é o mesmo Express: `/api/alocados`, `/api/users`, `/api/commercial-assignments` e `/api/sql/login`
+- Na Vercel a função `api/[...path].js` (gerada no build a partir de `src/server/vercelEntry.ts`) é o mesmo Express: `/api/alocados`, `/api/users`, `/api/commercial-assignments` e `/api/sql/login`
 
 ### `ALL /api/users`
 

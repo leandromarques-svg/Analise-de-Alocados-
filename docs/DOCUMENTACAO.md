@@ -14,7 +14,7 @@ A tela é a que já existia, em React. O que mudou foi a fonte. Antes o Express 
 - Express em `server.ts`, routers em `src/server/routes`
 - Prisma, SQL Server local (Docker) e Azure SQL em produção
 - Recharts nos gráficos
-- Na Vercel, a função `api/[...path].ts` exporta o mesmo Express
+- Na Vercel, a função `api/[...path].js` exporta o mesmo Express
 
 Não migrei para Next nem para FastAPI. O projeto já era React e Express, e eu continuei nele.
 
@@ -88,7 +88,7 @@ Para apontar para o Azure, troco a `DATABASE_URL` do `.env`. Se a senha começa 
 
 ## Vercel
 
-Tirei as funções que só respondiam “planilha removida”. `api/[...path].ts` sobe o Express com as mesmas rotas. O front publicado chama `/api/...` e cai nessa função.
+Tirei as funções que só respondiam “planilha removida”. O build gera `api/[...path].js` com o Express e as mesmas rotas. O front publicado chama `/api/...` e cai nessa função.
 
 Para funcionar lá eu ainda preciso, fora do código:
 

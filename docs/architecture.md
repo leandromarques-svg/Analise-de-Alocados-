@@ -31,7 +31,7 @@ Dashboard React/Vite de alocados com Express local. Fonte de leitura e gravaçã
 | Banco     | SQL Server / Azure SQL       | schema `alocados`; ADR-003          |
 | Auth      | localStorage + JSON (legado) | fora desta fatia                    |
 | Deploy FE | Vercel                       | build Vite                          |
-| Deploy BE | Express na função Vercel     | `api/[...path].ts` usa o mesmo app  |
+| Deploy BE | Express na função Vercel     | `api/[...path].js` gerado no build  |
 
 ## Variáveis de ambiente (nomes, sem valores)
 
