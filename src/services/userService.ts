@@ -1,7 +1,5 @@
 import { User, UserRole, UserLog } from '../types';
 
-const APPS_SCRIPT_USER_URL = 'https://script.google.com/macros/s/AKfycbxvEbfCjw5prUCltIj5KWGzilUXsp-tu4fIA_ZYvr5WWJ0k4OoJL7SLOP1ZrnSCejV8/exec';
-export const APPS_SCRIPT_CARTEIRA_URL = 'https://script.google.com/macros/s/AKfycbyAAGFPmP4QxDbhDLFaxvfgzKbVzFil21iSDhyXqo9dSeGweyGwBYPDPu9AaCMwz8-Yfw/exec';
 const LOCAL_STORAGE_KEY = 'metarh_users_v2';
 export const CARTEIRA_LOCAL_KEY = 'metarh_carteira_assignments_v1';
 const CURRENT_USER_KEY = 'metarh_current_user_v2';
@@ -31,63 +29,17 @@ const saveDeletedUsers = (set: Set<string>) => {
   localStorage.setItem(DELETED_USERS_KEY, JSON.stringify(Array.from(set)));
 };
 
-// Initial default accounts - only Master Admin Leandro
-const DEFAULT_USERS: User[] = [
-  {
-    id: 'admin_leandro',
-    username: 'Leandro',
-    password: '@Pi#101412',
-    role: 'Administrador',
-    createdAt: new Date().toISOString(),
-    logs: [
-      {
-        id: '1',
-        timestamp: new Date().toISOString(),
-        author: 'Sistema',
-        action: 'Criação de Conta',
-        details: 'Conta Master Administrador ativada.',
-      },
-    ],
-  },
-];
-
-// Helper to get local users synchronously without triggering remote fetches
 const getLocalUsers = (): User[] => {
-  const deletedUsers = getDeletedUsers();
-  let list: User[] = [];
   try {
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        list = parsed;
-      }
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {
     console.error('Error reading local users:', e);
   }
-
-  if (list.length === 0) {
-    list = DEFAULT_USERS;
-  }
-
-  // Filter out any explicitly deleted users
-  list = list.filter((u) => !deletedUsers.has(u.username.toLowerCase()));
-
-  // Ensure master admin Leandro exists unless explicitly removed
-  const hasLeandro = list.some((u) => u.username.toLowerCase() === 'leandro');
-  if (!hasLeandro && !deletedUsers.has('leandro')) {
-    list.unshift({
-      id: 'admin_leandro',
-      username: 'Leandro',
-      password: '@Pi#101412',
-      role: 'Administrador',
-      createdAt: new Date().toISOString(),
-    });
-  }
-
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
-  return list;
+  return [];
 };
 
 const parseArrayField = (val: any): string[] => {
@@ -103,12 +55,9 @@ const parseArrayField = (val: any): string[] => {
 };
 
 export const getUsers = async (): Promise<User[]> => {
-  const deletedUsers = getDeletedUsers();
-
   try {
     let remoteData: any = null;
 
-    // 1. Try server endpoint (/api/users)
     try {
       const apiRes = await fetch(`/api/users?action=getUsers&t=${Date.now()}`);
       if (apiRes.ok) {
@@ -128,21 +77,7 @@ export const getUsers = async (): Promise<User[]> => {
       console.warn('Server endpoint /api/users failed:', e);
     }
 
-    // 2. Fallback to direct Google Apps Script URL if server had no records
-    if (!remoteData || remoteData.length === 0) {
-      try {
-        const res = await fetch(`${APPS_SCRIPT_USER_URL}?action=getUsers&t=${Date.now()}`, {
-          method: 'GET',
-        });
-        if (res.ok) {
-          remoteData = await res.json();
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    if (Array.isArray(remoteData) && remoteData.length > 0) {
+    if (Array.isArray(remoteData)) {
       const formattedRemote: User[] = remoteData
         .filter((u: any) => {
           if (!u) return false;
@@ -152,8 +87,7 @@ export const getUsers = async (): Promise<User[]> => {
             uname !== '' &&
             uname !== 'usuário' &&
             uname !== 'usuario' &&
-            uname !== 'username' &&
-            !deletedUsers.has(uname)
+            uname !== 'username'
           );
         })
         .map((u: any) => {
@@ -179,27 +113,8 @@ export const getUsers = async (): Promise<User[]> => {
           };
         });
 
-      // Map to deduplicate by username
-      const userMap = new Map<string, User>();
-
-      // 1. DEFAULT_USERS
-      for (const u of DEFAULT_USERS) {
-        if (!deletedUsers.has(u.username.toLowerCase())) {
-          userMap.set(u.username.toLowerCase(), u);
-        }
-      }
-
-      // 2. Merge server remote users with HIGHEST priority
-      for (const u of formattedRemote) {
-        const key = u.username.toLowerCase();
-        if (!deletedUsers.has(key)) {
-          userMap.set(key, u);
-        }
-      }
-
-      const mergedList = Array.from(userMap.values());
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(mergedList));
-      return mergedList;
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formattedRemote));
+      return formattedRemote;
     }
   } catch (e) {
     console.warn('User DB unavailable, using local cache:', e);
@@ -369,27 +284,7 @@ export const getCommercialAssignments = async (comercialUsername?: string): Prom
     console.warn('Could not fetch commercial assignments from /api/commercial-assignments:', e);
   }
 
-  // 2. Direct fetch fallback from Google Apps Script Web App (vital for static / Vercel builds)
-  if (results.length === 0) {
-    try {
-      const scriptUrl = comercialUsername
-        ? `${APPS_SCRIPT_CARTEIRA_URL}?action=getAssignments&comercial=${encodeURIComponent(comercialUsername)}&t=${Date.now()}`
-        : `${APPS_SCRIPT_CARTEIRA_URL}?action=getAssignments&t=${Date.now()}`;
-
-      const res = await fetch(scriptUrl);
-      if (res.ok) {
-        const json = await res.json();
-        const items = Array.isArray(json) ? json : (json && Array.isArray(json.data) ? json.data : []);
-        if (Array.isArray(items) && items.length > 0) {
-          results = items;
-        }
-      }
-    } catch (e) {
-      console.warn('Direct fetch from Apps Script Carteira URL failed:', e);
-    }
-  }
-
-  // 3. Fallback to local storage
+  // 2. Fallback to local storage
   if (results.length === 0) {
     try {
       const stored = localStorage.getItem(CARTEIRA_LOCAL_KEY);
@@ -459,39 +354,7 @@ export const saveCommercialAssignments = async (
     console.warn('Could not post to /api/commercial-assignments:', e);
   }
 
-  // 2. Direct save to Google Apps Script Web App (vital for Vercel / static builds)
-  try {
-    const params = new URLSearchParams();
-    params.append('action', 'saveAssignments');
-    params.append('comercial', comercialUsername);
-    params.append('clientes', clientes.join(','));
-    params.append('grupos', grupos.join(','));
-    params.append('t', String(Date.now()));
-
-    const targetUrl = `${APPS_SCRIPT_CARTEIRA_URL}?${params.toString()}`;
-    const scriptRes = await fetch(targetUrl, { method: 'GET' }).catch(() => null);
-
-    if (scriptRes && scriptRes.ok) {
-      try {
-        // Re-fetch fresh list from Google Apps Script Web App
-        const refreshUrl = `${APPS_SCRIPT_CARTEIRA_URL}?action=getAssignments&t=${Date.now()}`;
-        const refreshRes = await fetch(refreshUrl);
-        if (refreshRes.ok) {
-          const freshJson = await refreshRes.json();
-          const items = Array.isArray(freshJson) ? freshJson : (freshJson && Array.isArray(freshJson.data) ? freshJson.data : []);
-          if (Array.isArray(items) && items.length > 0) {
-            savedItems = items;
-          }
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-  } catch (e) {
-    console.warn('Could not ping Apps Script Carteira URL:', e);
-  }
-
-  // 3. Update local storage & client mapping
+  // 2. Update local storage & client mapping
   if (savedItems && savedItems.length > 0) {
     localStorage.setItem(CARTEIRA_LOCAL_KEY, JSON.stringify(savedItems));
 

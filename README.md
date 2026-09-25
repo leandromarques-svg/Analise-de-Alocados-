@@ -1,251 +1,95 @@
 # Análise de Alocados
 
-Dashboard de análise de alocados, indicadores de RH, gestão comercial e painel de performance por cliente, região, cargo e período. O projeto combina frontend em React + TypeScript, backend Express para cache e sincronização, além de integrações com Google Apps Script para leitura de dados externos.
+Painel que eu uso para olhar a base de alocados: ativos, desligados, folha, contratos, região, grupos econômicos e a carteira comercial. O front é React com Vite. O servidor é Express. Os dados ficam no SQL Server, no schema `alocados`.
 
-## Visão geral
+A planilha do Google saiu. Eu não leio mais Apps Script nem o JSON de 18 mil linhas. Quem alimenta a base de funcionários é o Data Factory, no schema `dbo`. O app só lê a projeção disso.
 
-Este projeto foi pensado para centralizar e transformar dados de alocados em indicadores executivos e operacionais. Ele permite:
+## O que o painel faz
 
-- visualizar a base de colaboradores ativos e desligados;
-- acompanhar evolução por período e mês;
-- analisar salários e estrutura de folha;
-- mapear regionalmente os funcionários;
-- identificar contratos e expirações;
-- gerar visão por grupos econômicos e clientes;
-- manter perfis de acesso por papel (Administrador, RH, Comercial, Cliente, etc.);
-- aplicar filtros dinâmicos por região, vínculo, cliente, cargo e salário.
+- Lista colaboradores ativos e desligados, com filtro por período, vínculo, cliente, cargo, região e salário.
+- Mostra visão geral, evolução no tempo, salários, mapa regional, vencimento de contrato, grupos econômicos e a tabela crua.
+- Separa o acesso por papel: Administrador, RH, Comercial, Gerencial Comercial, Cliente e Colaborador.
+- Para o papel Cliente, esconde telefone, celular e e-mail.
+- Guarda usuários e a carteira comercial em tabelas nossas, no mesmo schema.
 
-## Stack tecnológica
+As abas continuam as mesmas de antes: Visão Geral, Temporal, Salários, Regional, Contratos, Grupos, Banco de Talentos, RH e Empresas, Carteira, Gestão Comercial e Tabela.
 
-- React 19
-- TypeScript
-- Vite
-- Express
-- Recharts
-- Lucide React
-- Tailwind CSS
-- Vercel Serverless Functions
-- Google Apps Script como fonte de dados
+## De onde vem cada dado
 
-## Funcionalidades principais
+No Azure, o Data Factory grava as tabelas compartilhadas no `dbo` (`TB_Funcionario`, `TB_Cliente`, `TB_Funcao`, `TB_CentroCusto`, `TB_Depto`, `TB_GrupoEconomico`). Vários apps usam esse `dbo`. O meu mora no schema `alocados`.
 
-### 1. Dashboard executivo
+`alocados.employees` em produção é uma view em cima dessas tabelas. Cada abertura da tela executa a consulta de novo, então a carga do ADF aparece sozinha. Eu não copio essa base para uma tabela.
 
-- KPIs com total de colaboradores, ativos, desligados, média salarial e valores de folha;
-- indicadores calculados em tempo real a partir da base filtrada;
-- visualizações de comparação por ano, por região e por segmento.
+No SQL local de teste eu não tenho o `dbo`. Lá `employees` continua tabela, com o mesmo nome, para o Prisma não precisar de dois modelos.
 
-### 2. Gestão de usuários e acessos
+Usuários, log de usuário e carteira comercial são tabelas de verdade, gravadas pelo app:
 
-- autenticação local baseada em `localStorage` e servidor;
-- perfis com permissões diferentes;
-- filtros de dados por grupo econômico e clientes atribuídos;
-- mascaramento de dados sensíveis para usuários do tipo `Cliente` com LGPD.
+- `alocados.users`
+- `alocados.user_logs`
+- `alocados.commercial_assignments`
 
-### 3. Módulos de análise
+O campo `empresa` na view é o código numérico `CodigoEmpresa`. Na tela eu mostro esse código como texto.
 
-A interface possui abas e módulos como:
+## Como eu rodo aqui
 
-- Visão Geral
-- Temporal
-- Salários e Vagas
-- Regional
-- Contratos / Vencimentos
-- Grupos Econômicos
-- Talent Bank
-- RH e Empresas Comerciais
-- Carteira Comercial
-- Gestão Comercial
-- Tabela de Dados
-
-### 4. Cache e resiliência
-
-- leitura de dados do backend ou do cache local;
-- fallback para arquivo estático `metarh_cache_18k.json`;
-- tentativa de sincronização com Google Apps Script;
-- persistência local para evitar falhas de rede ou indisponibilidade da origem primária.
-
-## Estrutura do projeto
-
-```text
-.
-├── api/
-│   ├── alocados.ts
-│   └── users.ts
-├── public/
-│   └── metarh_cache_18k.json
-├── src/
-│   ├── components/
-│   ├── data/
-│   ├── services/
-│   ├── utils/
-│   ├── App.tsx
-│   ├── index.css
-│   ├── main.tsx
-│   └── types.ts
-├── index.html
-├── metadata.json
-├── metarh_cache_18k.json
-├── metarh_commercial_assignments.json
-├── package.json
-├── server.ts
-├── tsconfig.json
-├── vercel.json
-├── vite.config.ts
-└── README.md
-```
-
-## Requisitos
-
-- Node.js 18+
-- npm ou yarn
-- acesso à internet para consultar a fonte externa de dados
-
-## Instalação
+Precisa de Node 18+ e Docker, se for usar o SQL local.
 
 ```bash
 npm install
-```
-
-## Execução local
-
-### Desenvolvimento
-
-```bash
+npm run db:up
+npm run db:ensure
+npm run db:migrate
 npm run dev
 ```
 
-O comando inicia o servidor Express e a aplicação Vite em ambiente local.
+O `.env` sai do `.env.example`. A variável que importa é `DATABASE_URL`. O arquivo `.env` não entra no Git.
 
-### Build de produção
+`npm run dev` sobe o Express com o Vite na porta 3000. `npm run start` serve o build (`dist/`) sem o Vite no meio. Eu uso `npm run db:migrate` para aplicar migration. Não uso reset.
 
-```bash
-npm run build
+No banco local a lista de alocados começa vazia, porque não existe `dbo`. Usuários e carteira eu consigo gravar direto.
+
+## O que eu já coloquei em produção
+
+As migrations do schema `alocados` já rodaram no Azure. Usuários e carteira eu carreguei dos JSON que estavam na raiz (`metarh_users_db.json` e `metarh_commercial_assignments.json`), com `npm run db:import-json`. O cache de 18 mil funcionários eu não importei: em produção isso é view, não tabela.
+
+O login tenta primeiro `POST /api/sql/login`, comparando usuário e senha na tabela `alocados.users`. A senha ainda está em texto puro. A sessão continua no `localStorage`.
+
+## Por que a lista demora
+
+São cerca de 33 mil linhas, com vários joins. A primeira leitura passa de um minuto. Por isso o Express guarda o resultado em memória por 15 minutos (`ALOCADOS_CACHE_TTL_MS`). A abertura seguinte sai na hora. O botão Atualizar ignora o cache e lê o banco de novo.
+
+Quando o prazo vence, a tela ainda abre com o dado anterior e o servidor atualiza por trás.
+
+## Rotas
+
+- `GET /api/alocados` — a lista em páginas de até 4000 (`offset`, `limit`). Aceita `?refresh=1` na primeira página.
+- `ALL /api/users` — consulta, grava e apaga usuário (`action=getUsers|saveUser|deleteUser`).
+- `ALL /api/commercial-assignments` — lê e grava a carteira.
+- `POST /api/sql/login` — login no SQL.
+- `GET /api/sql/health` — só para eu ver se o banco responde.
+
+O detalhe do contrato está em `docs/contracts.md`. O desenho das tabelas está em `docs/data-model.md`.
+
+## Vercel
+
+A função `api/[...path].ts` é o mesmo Express. Login, usuários, carteira e alocados passam por ela.
+
+Subir o Git sozinho não liga o site. Na Vercel eu preciso da `DATABASE_URL` nas variáveis do projeto, e no Azure SQL o firewall tem que aceitar a conexão que sai de lá. A função corta em 60 segundos. A primeira leitura dos alocados pode cair nesse limite. Login e carteira são consultas pequenas e não sofrem o mesmo problema.
+
+## O que ainda está fraco
+
+- Senha em texto puro e sessão no navegador. Não é login de produção.
+- Não tenho teste automatizado dessa fatia. Eu validei no browser e nas rotas.
+- A primeira carga dos 33 mil ainda é lenta. Se eu precisar que ela caiba no tempo da Vercel, o próximo passo é materializar a view numa tabela, no ritmo do Data Factory.
+
+## Pastas
+
+```text
+api/            função da Vercel (o Express)
+prisma/         schema e migrations
+scripts/        criar o database, importar JSON, smoke
+src/server/     routers do Express
+src/            React
+docs/           modelo, contrato, decisões
+server.ts       sobe o Express na minha máquina
 ```
-
-### Execução da build
-
-```bash
-npm run start
-```
-
-### Verificação de TypeScript
-
-```bash
-npm run lint
-```
-
-## Como o sistema funciona
-
-### Fluxo de dados
-
-1. O frontend solicita os registros em `/api/alocados`.
-2. O backend tenta carregar dados do servidor ou do cache local.
-3. Se necessário, recorre a `metarh_cache_18k.json`.
-4. Em último caso, consulta o Google Apps Script diretamente.
-5. Os dados são normalizados em `normalizeFuncionario()` antes de entrar no dashboard.
-6. O dashboard calcula métricas, aplica filtros e renderiza os componentes.
-
-### Normalização de dados
-
-A função `normalizeFuncionario` faz tratativas como:
-
-- padronização de campos em português/inglês;
-- conversão de datas;
-- limpeza de strings vazias;
-- extração de UF, município, salário e status de ativo/inativo;
-- geração de identificadores internos.
-
-### Autenticação e autorização
-
-A autenticação usa informações em `localStorage` e sincronização com APIs do servidor. O usuário pode possuir papel como:
-
-- Administrador
-- RH
-- Comercial
-- Gerencial Comercial
-- Cliente
-- Colaborador
-
-Há restrições por perfil:
-
-- usuários `Cliente` veem apenas dados apropriadamente filtrados;
-- usuários `RH` têm visões focadas em pessoas e empresas;
-- usuários de comercial têm acesso ao módulo de carteira/gestão.
-
-## Integrações
-
-### API Vercel
-
-Arquivo: `api/alocados.ts`
-
-- realiza fetch no Google Apps Script;
-- retorna JSON com `success`, `source`, `fetchedAt`, `total`, `data`;
-- habilita CORS;
-- define `Cache-Control` para otimizar uso por CDN.
-
-### Backend Express
-
-Arquivo: `server.ts`
-
-- gerencia cache em memória;
-- salva cache local em disco;
-- alimenta `/api/users` e `/api/alocados`;
-- sincroniza dados de carteira e usuários;
-- serve a aplicação em ambiente de produção.
-
-## Armazenamento local
-
-O projeto persiste informações em arquivos locais e no navegador:
-
-- `metarh_cache_18k.json`
-- `metarh_users_db.json`
-- `metarh_commercial_assignments.json`
-- `localStorage` com usuários e sessão atual
-
-## Segurança
-
-A aplicação ainda possui alguns pontos que devem ser reforçados em ambiente real:
-
-- senha do usuário administrador está definida no código como valor padrão;
-- autenticação baseada em `localStorage` não substitui um sistema de identidade robusto;
-- dados sensíveis exigem controle de acesso e mascaramento robusto;
-- o uso de API externa e fetch direto exige validação de origem e limites de quota.
-
-Recomendação para produção:
-
-- mover credenciais para variáveis de ambiente;
-- usar autenticação real com Entra ID / OAuth ou outro provedor;
-- armazenar dados sensíveis em banco ou storage seguro;
-- configurar logs e auditoria de acessos.
-
-## Deploy
-
-O projeto está preparado para deploy em Vercel, conforme `vercel.json`.
-
-### Exemplo de deploy
-
-```bash
-npm run build
-```
-
-Depois, faça o deploy no Vercel ou em outro provedor compatível com Node.js.
-
-## Observações importantes
-
-- A aplicação depende de fontes externas e pode falhar em ausência de rede ou de acesso ao Google Apps Script.
-- O projeto foi construído para análise operacional e executiva, não como sistema financeiro ou de produção crítico sem revisão de segurança.
-- O cache local é uma camada de resiliência, não substitui a fonte principal.
-
-## Melhorias sugeridas
-
-- migrar autenticação para backend real com JWT ou OAuth;
-- adicionar banco de dados para usuários e permissões;
-- criar testes automatizados para métricas e filtros;
-- melhorar tratamento de erros e logging;
-- implementar paginação para grandes volumes de dados;
-- separar rotas, serviços e modelos por domínio.
-
-## Conclusão
-
-Este projeto é um painel analítico de pessoas e carteira comercial com foco em gestão de alocados, RH e campanhas de clientes. Ele foi estruturado para funcionar com dados volumosos, cache, variações de perfil e múltiplos módulos de análise, tornando-se uma ferramenta útil para tomada de decisão operacional e executiva.
