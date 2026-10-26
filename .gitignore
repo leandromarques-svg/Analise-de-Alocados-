@@ -6,3 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
+metarh_commercial_assignments.json
+metarh_users_db.json

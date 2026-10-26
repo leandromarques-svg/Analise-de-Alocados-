@@ -79,7 +79,7 @@ export const Footer: React.FC<FooterProps> = ({
             </p>
             <div className="pt-2">
               <span className="inline-flex items-center gap-1.5 bg-white/80 text-slate-700 px-3 py-1 rounded-lg border border-[#dfd2ee] text-[11px] font-medium shadow-2xs">
-                <RefreshCw className="w-3 h-3 text-emerald-600 animate-spin" /> Cache Local Ativo (Alta Performance)
+                <RefreshCw className="w-3 h-3 text-emerald-600" /> Base carregada
               </span>
             </div>
           </div>

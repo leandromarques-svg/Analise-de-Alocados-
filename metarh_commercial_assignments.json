@@ -2,11 +2,861 @@
   {
     "Grupo Economico": "00392-ECOLAB",
     "Nome Cliente": "ECOLAB QUIMICA LTDA",
-    "Comercial": "Fernanda Bastos"
+    "Comercial": "Gabi Amorim"
   },
   {
     "Grupo Economico": "00392-ECOLAB",
     "Nome Cliente": "ECOLAB QUIMICA LTDA.",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "ALCON BRASIL CUIDADOS COM A SAUDE LTDA",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "ALCON BRASIL CUIDADOS COM A SAUDE LTDA.",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "NOVARTIS BIOCIENCIA SA",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "NOVARTIS BIOCIENCIAS SA",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "NOVARTIS BIOCIENCIAS S/A",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "NOVARTIS BIOCIENCIAS S/A.",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "NOVARTIS BIOCIENCIA S/A",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "NOVARTIS BIOCIENCIAS S.A.",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "NOVARTIS SAUDE ANIMAL LTDA",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "PREVI NOVARTIS - SOCIEDADE DE PREVIDENCIA PRIVADA",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "SANDOZ DO BRASIL INDUSTRIA FARMACEUTICA LTDA",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "COPAG DA AMAZONIA S A",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "RECORDATI RARE DISEASES COMERCIO DE MEDICAMENTOS LTDA",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00392-ECOLAB",
+    "Nome Cliente": "LABORATORIOS NAOS DO BRASIL LTDA",
+    "Comercial": "Gabi Amorim"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "ARLIQUIDO COMERCIAL LTDA",
     "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "00047-AIR LIQUIDE",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "AIR LIQUIDE BRASIL LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "AIR LIQUIDE BRASIL LTDA.",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "SEPPIC BRASIL EQCI LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "CINEMARK BRASIL",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "NASSER SOCIEDADE DE ADVOGADOS",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "SPAL DO BRASIL COMERCIO DE COMPONENTES AUTOMOTIVOS LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "UREPOL POLIMEROS LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "DELOITTE TOUCHE OUTSOURCING SERVICOS CONTABEIS E A",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "DELOITTE TOUCHE TOHMATSU AUDITORES INDEPENDENTES",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "DELOITTE TOUCHE TOHMATSU CONSULTORES LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "DELOITTE TOUCHETOHMATSU AUDITORES INDEPENDENTES",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "DELOITTE TOUCHE OUT SOURCING SERVICOS CONTABEIS E",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "DELOITTE TOUCHE TOHMATSU CONSULTORES LTDA.",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "UHE SAO SIMAO ENERGIA SA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "SPIC BRASIL ENERGIA PARTICIPACOES SA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "PACIFIC HYDRO ENERGIA DO BRASIL LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "REED EXHIBITIONS ALCANTARA MACHADO LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "LEXISNEXIS SERVICOS DE ANALISE DE RISCO LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "LEXISNEXIS INFORMACOES E SISTEMAS EMPRESARIAIS LTD",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "FISIA COMERCIO DE PRODUTOS ESPORTIVOS S.A.",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "SBF COMERCIO DE PRODUTOS ESPORTIVOS S.A.",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "LABORATORIOS EXPANSCIENCE COMERCIO IMPORTACAO E EXPORTACAO DE PRODUTOS",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "ELEKTA MEDICAL SYSTEMS COM E SERV PARA RADIOTERA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "VARIAN MEDICAL SYSTEMS BRASIL LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "VARIAN IND E COM LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "AMWAY DO BRASIL LIMITADA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "AVL SOUTH AMERICA LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "OUTBACK STEAKHOUSE RESTAURANTES BRASIL SA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "COVESTRO INDUSTRIA E COMERCIO DE POLIMEROS LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "UNIDOCK'S ASSESSORIA E LOGISTICA DE MATERIAIS LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "UNIDOCK'S ASSESSORIA E LOGÍSTICA DE MATERIAIS LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "DR REDDY S FARMACEUTICA DO BRASIL LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "DR. REDDY S FARMACEUTICA DO BRASIL LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "TAMINCO DO BRASIL PRODUTOS QUIMICOS LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "SOLUTIA BRASIL LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "EASTMAN CHEMICAL DO BRASIL LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "SCANDIFLEX DO BRASIL LTDA.",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "NOVA ADITIVOS BRASIL LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "SOLUTIA BRASIL LTDA.",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "EASTMAN HOLDINGS DO BRASIL LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "ENVIRONMENTAL SCIENCE DO BRASIL LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "FUNDO GARANTIDOR DE CREDITOS - FGC",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "INSTITUTO VOTORANTIM",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "HIDROVIAS DO BRASIL SA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "HIDROVIAS DO BRASIL ADMINISTRACAO PORTUARIA SANTOS",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "HIDROVIAS DO BRASIL VILA DO CONDE SA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "HIDROVIAS DO BRASIL - CABOTAGEM LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "IDEXX BRASIL LABORATORIOS LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "MARSH CORRETORA DE SEGUROS LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "MERCER HUMAN RESOURCE CONSULTING LTDA",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "REDE AGRO FIDELIDADE E INTERMEDIACAO S.A.",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "FUNDACAO CESP",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00047-AIR LIQUIDE",
+    "Nome Cliente": "VIVER INCORPORADORA E CONSTRUTORA S.A.",
+    "Comercial": "Fernanda Bastos"
+  },
+  {
+    "Grupo Economico": "00078-APDATA DO BRASIL",
+    "Nome Cliente": "APDATA DO BRASIL SOFTWARE LTDA",
+    "Comercial": "Camila Rocha"
+  },
+  {
+    "Grupo Economico": "00078-APDATA DO BRASIL",
+    "Nome Cliente": "00078-APDATA DO BRASIL",
+    "Comercial": "Camila Rocha"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "MONSANTO DO BRASIL LTDA",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "00136-BAYER",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "BAYER SA",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "MONSANTO DO BRASIL LTDA.",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "BAYER S/A",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "BAYER S.A",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "BAYER CROPSCIENCE LTDA.",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "BAYER S.A.",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "SCHERING-PLOUGH INDUSTRIA FARMACEUTICA LTDA.",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "BECTON DICKINSON INDUSTRIA CIRURGICA LTDA",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "BECTON DICKINSON INDCIR LTDA",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "BECTON DICKINSON INDUSTRIAS CIRURGICAS LTDA",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "BARD BRASIL INDUSTRIA E COMERCIO DE PRODUTOS PARA",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "EMBECTA BRASIL LTDA",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "HUNTSMAN QUIMICA BRASIL LTDA",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "HUNTSMAN QUIMICA BRASIL LTDA.",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "HUNTER FAN DO BRASIL IMPORTA E COMERC DE VENTILADO",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "VISA DO BRASIL EMPREENDIMENTOS LTDA",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "DANONE LTDA",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "00136-BAYER",
+    "Nome Cliente": "ZIMMER BIOMET BRASIL LTDA",
+    "Comercial": "Leandro Marques"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "ITAVEMA FRANCE VEÍCULOS LIMITADA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "01425-GRUPO ITAVEMA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00139-BDF NIVEA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "LIBBS FARMACEUTICA LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "NORGREN LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "BDF NIVEA LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "RLG DO BRASIL LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "01074-RLG DO BRASIL",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "ALNYLAM BRASIL FARMACEUTICA LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "BOTTEGA VENETA HOLDING LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "WAELZHOLZ BRASMETAL LAMINACAO LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "CANON MEDICAL SYSTEMS DO BRASIL LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "CANON MEDICAL SYSTEMS DO BRASIL",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "NIBS PARTICIPACOES SA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "NIBS PARTICIPACOES S.A.",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "NIBS PARTICIPACOES S.A",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "ITAVEMA FRANCE VEÍCULOS LIMITADA.",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "ITAVEMA FRANCE VEICULOS LIMITADA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "INTERCAR VOCAL MOTORS COMERCIO DE VEICULOS LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "ITVA COMERCIO DE VEICULOS LTDA.",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "NOVA ERA SERVICOS DE ESCRITORIO ADMINISTRATIVO LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "LIDERANCA CAPITALIZACAO SOCIEDADE ANONIMA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "SS COMERCIO DE COSMETICOS E PRODUTOS DE HIGIENE PE",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "PROMOLIDER - PROMOTORA DE VENDAS LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "LIDERANCA CAPITALIZACAO SA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "ILLUMINA BRASIL PRODUTOS DE BIOTECNOLOGIA LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "JBS SA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "JBS AVES LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "SEARA ALIMENTOS LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "JBS S/A",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "INDUSTRIA DE SORVETES CAMAGIVA LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "DEVELOPMENT MANAGEMENT & CONSULTING GROUP INC",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "MERCK SHARP & DOHME SAUDE ANIMAL LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "COOPERS SAUDE ANIMAL IND E COM LTDA MSD",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "PROMETEON TYRE GROUP INDUSTRIA BRASIL LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "PIRELLI PNEUS LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "TP INDUSTRIAL DE PNEUS BRASIL LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "PIRELLI COMERCIAL DE PNEUS BRASIL LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "RLG DO BRASIL VAREJO LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "RLG DO BRASIL LTDA.",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "ROYAL CANIN DISTRIBUIDORA LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "ROYAL CANIN DO BRASIL INDUSTRIA E COMERCIO LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "SERASA SA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "SERASA S.A",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "SKINTEC COMERCIAL IMPORTADORA E EXPORTADORA LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "VR BENEFICIOS E SERVICOS PROCESSAMENTO SA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "VR MOBILIDADE E TECNOLOGIA S.A.",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "VR HOLDINGS S.A",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "BL INDUSTRIA OTICA LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "L'APICCIRELLA SOCIEDADE INDIVIDUAL DE ADVOCACIA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "AGFA GEVAERT DO BRASIL LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "SEARA ALIMENTOS LTDA.",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "MERCK SHARP & DOHME FARMACEUTICA LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "SUPERA RX MEDICAMENTOS LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "VALLEE SA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "GRUPO CASAS BAHIA S.A.",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "INTER JAPAN VEICULOS LTDA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00771-LIBBS",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00683-IMI NORGREN",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00057-ALNYLAM BRASIL",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00187-BOTTEGA VENETA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00199-BRASMETAL",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00219-CANON MEDICAL SYSTEMS DO BRASIL",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00574-GRUPO CRM",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00619-GRUPO SILVIO SANTOS",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00681-ILLUMINA BRASIL",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00728-JBS",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "01397-LOS LOS SORVETES",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00881-MSD",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00995-PIRELLI",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "01082-ROYAL CANIN",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "01126-SERASA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "01446-SKINTEC",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "01335-VR BENEFICIOS",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "01292-VALEANT",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "01452-L'APICCIRELLA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "00577-GRUPO DEDALUS",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "01428-CASAS BAHIA",
+    "Comercial": "Carol Giorgetti"
+  },
+  {
+    "Grupo Economico": "01425-GRUPO ITAVEMA",
+    "Nome Cliente": "PIRELLI PNEUS LTDA.",
+    "Comercial": "Carol Giorgetti"
   }
 ]

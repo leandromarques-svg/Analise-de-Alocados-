@@ -1,5 +1,4 @@
 import { Funcionario } from '../types';
-import { APPS_SCRIPT_CARTEIRA_URL } from '../services/userService';
 
 const CLIENT_ASSIGNMENTS_KEY = 'metarh_commercial_client_assignments_v1';
 const CARTEIRA_LOCAL_KEY = 'metarh_carteira_assignments_v1';
@@ -123,16 +122,6 @@ export function saveClientAssignment(clientName: string, repUsername: string): R
         grupos: [],
       }),
     }).catch(() => {});
-
-    // Direct Google Script ping (essential for Vercel / static builds)
-    const params = new URLSearchParams();
-    params.append('action', 'saveAssignments');
-    params.append('comercial', repUsername);
-    params.append('clientes', repClients.join(','));
-    params.append('grupos', '');
-    params.append('t', String(Date.now()));
-
-    fetch(`${APPS_SCRIPT_CARTEIRA_URL}?${params.toString()}`, { method: 'GET' }).catch(() => {});
   }
 
   return current;
@@ -157,23 +146,6 @@ export async function syncCommercialAssignmentsServer(): Promise<Record<string, 
     }
   } catch (e) {
     console.warn('Could not sync commercial assignments from server API:', e);
-  }
-
-  // 2. Direct fallback to Google Apps Script Web App (vital for Vercel static deployments)
-  if (items.length === 0) {
-    try {
-      const scriptUrl = `${APPS_SCRIPT_CARTEIRA_URL}?action=getAssignments&t=${Date.now()}`;
-      const res = await fetch(scriptUrl);
-      if (res.ok) {
-        const json = await res.json();
-        const parsed = Array.isArray(json) ? json : (json && Array.isArray(json.data) ? json.data : []);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          items = parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('Could not sync commercial assignments from Google Script directly:', e);
-    }
   }
 
   if (items.length > 0) {
