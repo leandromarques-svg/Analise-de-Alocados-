@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Funcionario, FilterOptions, DashboardMetrics, User } from "./types";
 import {
   normalizeFuncionario,
@@ -9,6 +9,7 @@ import {
   syncCommercialAssignmentsServer,
   getClientAssignments,
 } from "./utils/commercialUtils";
+import { isAdminRole, isRestrictedMetarhGroup } from "./utils/groupRestrictions";
 import { getCurrentUserFromStorage, logoutUser } from "./services/userService";
 import { Header } from "./components/Header";
 import { FilterBar } from "./components/FilterBar";
@@ -132,10 +133,18 @@ export default function App() {
   const handleLogout = () => {
     logoutUser();
     setCurrentUser(null);
+    setFilters(initialFilters);
+    setSelectedWorker(null);
   };
 
-  // Restrict base dataset for 'Cliente' role to their assigned grupoEconomicos & clientes
+  // Restrict base dataset: '845 - METARH' is only visible/counted for Administrador,
+  // and 'Cliente' role is restricted to their assigned grupoEconomicos & clientes
   const roleFilteredData = useMemo(() => {
+    const isAdmin = isAdminRole(currentUser?.role);
+    const visibleData = isAdmin
+      ? data
+      : data.filter((item) => !isRestrictedMetarhGroup(item.grupoEconomico));
+
     if (currentUser?.role === "Cliente") {
       const userGroups =
         currentUser.gruposEconomicos && currentUser.gruposEconomicos.length > 0
@@ -150,8 +159,8 @@ export default function App() {
 
       const matched =
         userGroups.length === 0 && userClients.length === 0
-          ? data
-          : data.filter((item) => {
+          ? visibleData
+          : visibleData.filter((item) => {
               const itemGroup = item.grupoEconomico.toLowerCase().trim();
               const itemClient = item.nomeCliente.toLowerCase().trim();
               const itemCnpj = item.cnpjCliente?.toLowerCase().trim() || "";
@@ -177,10 +186,13 @@ export default function App() {
         emailCorporativo: item.emailCorporativo ? "Restrito (LGPD)" : "",
       }));
     }
-    return data;
+    return visibleData;
   }, [data, currentUser]);
 
+  const fetchSeqRef = useRef(0);
+
   const fetchData = async (forceRefresh = false) => {
+    const seq = ++fetchSeqRef.current;
     const hasData = data.length > 0;
     if (hasData) {
       setIsBackgroundUpdating(true);
@@ -191,6 +203,7 @@ export default function App() {
     try {
       const PAGE_SIZE = 4000;
       const who = currentUser?.username?.trim();
+      const role = currentUser?.role || "";
       const rawData: any[] = [];
       let offset = 0;
       let total = Number.POSITIVE_INFINITY;
@@ -201,6 +214,9 @@ export default function App() {
         const params = new URLSearchParams();
         params.set("offset", String(offset));
         params.set("limit", String(PAGE_SIZE));
+        if (role) {
+          params.set("role", role);
+        }
         if (forceRefresh && offset === 0) {
           params.set("refresh", "1");
           if (who) params.set("by", who);
@@ -210,6 +226,7 @@ export default function App() {
           throw new Error(`HTTP ${res.status}`);
         }
         const json = await res.json();
+        if (seq !== fetchSeqRef.current) return;
         const page = Array.isArray(json.data) ? json.data : [];
         total = Number(json.total) || 0;
         rawData.push(...page);
@@ -219,19 +236,23 @@ export default function App() {
         offset += page.length;
       }
 
+      if (seq !== fetchSeqRef.current) return;
       setData(rawData.map((raw: any, idx: number) => normalizeFuncionario(raw, idx)));
       setDataSource("live");
       setLastUpdated(fetchedAt || new Date().toISOString());
       setUpdatedBy(whoUpdated);
     } catch (err) {
+      if (seq !== fetchSeqRef.current) return;
       console.warn("Falha ao carregar alocados do banco:", err);
       if (!hasData) {
         setData([]);
         setDataSource("live");
       }
     } finally {
-      setIsLoading(false);
-      setIsBackgroundUpdating(false);
+      if (seq === fetchSeqRef.current) {
+        setIsLoading(false);
+        setIsBackgroundUpdating(false);
+      }
     }
   };
 
@@ -239,8 +260,14 @@ export default function App() {
     syncCommercialAssignmentsServer().catch((e) =>
       console.warn("Sync de carteira comercial inicial falhou:", e),
     );
-    fetchData(false);
   }, []);
+
+  useEffect(() => {
+    if (!isAdminRole(currentUser?.role) && isRestrictedMetarhGroup(filters.grupoEconomico)) {
+      setFilters((prev) => ({ ...prev, grupoEconomico: "" }));
+    }
+    fetchData(false);
+  }, [currentUser?.role]);
 
   // Options for filter selects derived from whole dataset
   const availableGrupos = useMemo(() => {
@@ -874,7 +901,7 @@ export default function App() {
             )}
 
             {activeTab === "comercial_gestao" && (
-              <CommercialManagementTab data={data} currentUser={currentUser!} />
+              <CommercialManagementTab data={roleFilteredData} currentUser={currentUser!} />
             )}
 
             {activeTab === "overview" && (
@@ -946,6 +973,7 @@ export default function App() {
               <CompanyCommercialsTab
                 data={roleFilteredData}
                 clientAssignmentsMap={clientAssignmentsMap}
+                isAdmin={isAdminRole(currentUser?.role)}
                 onSelectWorker={(w) => setSelectedWorker(w)}
               />
             )}
@@ -995,7 +1023,7 @@ export default function App() {
         currentUser={currentUser}
         availableGrupos={availableGrupos}
         availableClientes={availableClientes}
-        data={data}
+        data={roleFilteredData}
       />
 
       {/* App Footer */}

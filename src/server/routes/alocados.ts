@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getAlocados } from '../alocadosCache.ts';
+import { isAdminRole, isRestrictedMetarhGroup } from '../../utils/groupRestrictions.ts';
 
 const router = Router();
 const PAGE_SIZE = 4000;
@@ -8,15 +9,20 @@ router.get('/alocados', async (req, res) => {
   try {
     const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
     const updatedBy = String(req.query.by || '').trim() || 'Atualização automática';
+    const role = String(req.query.role || req.headers['x-user-role'] || '').trim();
     const offset = Math.max(0, Number.parseInt(String(req.query.offset ?? '0'), 10) || 0);
     const requested = Number.parseInt(String(req.query.limit ?? PAGE_SIZE), 10);
     const limit = Math.min(PAGE_SIZE, Math.max(1, Number.isFinite(requested) ? requested : PAGE_SIZE));
     const payload = await getAlocados(refresh, updatedBy);
+    const visibleData = isAdminRole(role)
+      ? payload.data
+      : payload.data.filter((item) => !isRestrictedMetarhGroup(item.grupoEconomico));
     return res.json({
       ...payload,
+      total: visibleData.length,
       offset,
       limit,
-      data: payload.data.slice(offset, offset + limit),
+      data: visibleData.slice(offset, offset + limit),
     });
   } catch (err: any) {
     console.error('[SQL alocados]', err);
