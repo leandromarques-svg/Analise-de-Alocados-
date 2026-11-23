@@ -7,12 +7,14 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatDate, parseDateDetails } from '../../utils/dataParser';
 import { getClientAssignments } from '../../utils/commercialUtils';
+import { isRestrictedMetarhGroup } from '../../utils/groupRestrictions';
 import { getUsers } from '../../services/userService';
 import { MultiSearchableSelect } from '../MultiSearchableSelect';
 
 interface CompanyCommercialsTabProps {
   data: Funcionario[];
   clientAssignmentsMap?: Record<string, string>;
+  isAdmin?: boolean;
   onSelectWorker?: (worker: Funcionario) => void;
 }
 
@@ -43,6 +45,7 @@ interface CompanySummary {
 export const CompanyCommercialsTab: React.FC<CompanyCommercialsTabProps> = ({
   data,
   clientAssignmentsMap,
+  isAdmin = false,
   onSelectWorker,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -142,6 +145,7 @@ export const CompanyCommercialsTab: React.FC<CompanyCommercialsTabProps> = ({
 
     // Also inject any clients assigned in effectiveAssignments that might not have current workers
     Object.entries(effectiveAssignments).forEach(([cliName, repName]) => {
+      if (!isAdmin && isRestrictedMetarhGroup(cliName)) return;
       if (cliName && !map.has(cliName) && repName) {
         map.set(cliName, {
           clientName: cliName,

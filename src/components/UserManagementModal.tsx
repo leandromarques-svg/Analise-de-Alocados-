@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, UserLog, Funcionario } from '../types';
 import { getUsers, saveUser, deleteUser, addUserLog } from '../services/userService';
+import { isRestrictedMetarhGroup } from '../utils/groupRestrictions';
 import {
   Users,
   UserPlus,
@@ -380,6 +381,7 @@ function handleRequest(e) {
 
                     <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pt-1 pr-1">
                       {availableGrupos
+                        .filter((g) => !isRestrictedMetarhGroup(g))
                         .filter((g) => !grupoSearch || g.toLowerCase().includes(grupoSearch.toLowerCase()))
                         .map((g) => {
                           const isSel = selectedGrupos.includes(g);
